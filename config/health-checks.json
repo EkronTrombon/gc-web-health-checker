@@ -1,0 +1,58 @@
+{
+  "healthChecks": [
+    {
+      "id": "markup",
+      "label": "W3C Markup Validation",
+      "description": "Validate HTML markup",
+      "icon": "Globe",
+      "color": "text-primary",
+      "enabled": true,
+      "apiEndpoint": "/api/validate/markup"
+    },
+    {
+      "id": "accessibility",
+      "label": "Accessibility Check",
+      "description": "WCAG compliance analysis",
+      "icon": "Eye",
+      "color": "text-primary",
+      "enabled": true,
+      "apiEndpoint": "/api/validate/accessibility"
+    },
+    {
+      "id": "contrast",
+      "label": "Contrast Checker",
+      "description": "Color contrast validation",
+      "icon": "Shield",
+      "color": "text-primary",
+      "enabled": true,
+      "apiEndpoint": "/api/validate/contrast"
+    },
+    {
+      "id": "lighthouse",
+      "label": "Lighthouse Report",
+      "description": "Performance & best practices",
+      "icon": "Zap",
+      "color": "text-primary",
+      "enabled": true,
+      "apiEndpoint": "/api/validate/lighthouse"
+    },
+    {
+      "id": "seo",
+      "label": "SEO Analysis",
+      "description": "Search engine optimization",
+      "icon": "Search",
+      "color": "text-primary",
+      "enabled": true,
+      "apiEndpoint": "/api/validate/seo"
+    },
+    {
+      "id": "security",
+      "label": "Security Headers",
+      "description": "Security configuration check",
+      "icon": "CheckCircle",
+      "color": "text-primary",
+      "enabled": true,
+      "apiEndpoint": "/api/validate/security"
+    }
+  ]
+}
