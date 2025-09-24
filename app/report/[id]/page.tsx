@@ -1,49 +1,246 @@
-import { notFound } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
+import { notFound, useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
-
-interface ReportPageProps {
-  params: {
-    id: string;
-  };
-}
 
 // This would typically fetch from a database or cache
 async function getReportData(id: string) {
-  // For now, we'll simulate report data
-  // In a real implementation, you'd fetch this from your database
-  const mockReports: Record<string, any> = {
-    "markup-example": {
-      id: "markup",
+  // In a real implementation, you would fetch stored report data from your database
+
+  // First, check if the report data exists in localStorage (from health checker)
+  try {
+    const storedData = localStorage.getItem(`report-${id}`);
+    if (storedData) {
+      const reportData = JSON.parse(storedData);
+      return reportData;
+    }
+  } catch (error) {
+    console.error('Error reading from localStorage:', error);
+  }
+
+  // Extract the report type and timestamp from the ID (e.g., "contrast-1758735258007")
+  const [reportType, timestamp] = id.split('-');
+
+  if (!reportType || !timestamp) {
+    return null;
+  }
+
+  // For demonstration, we'll use a test URL
+  // In a real app, you'd store the URL with the report ID in a database
+  const testUrl = "https://example.com";
+
+  try {
+    // Call the appropriate validation API
+    const apiEndpoint = `/api/validate/${reportType}`;
+    const requestBody = reportType === 'security' || reportType === 'lighthouse'
+      ? { url: testUrl }
+      : { url: testUrl };
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${apiEndpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      console.error(`API call failed for ${reportType}:`, response.statusText);
+      return null;
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      console.error(`Validation failed for ${reportType}:`, result.error);
+      return null;
+    }
+
+    // Return the report data from the API
+    return result.data;
+
+  } catch (error) {
+    console.error(`Error fetching report data for ${reportType}:`, error);
+
+    // Fallback to mock data if API fails
+    return getFallbackData(reportType, testUrl);
+  }
+}
+
+// Fallback mock data in case APIs fail
+function getFallbackData(reportType: string, url: string) {
+  const fallbackTemplates: Record<string, any> = {
+    "markup": {
+      id: `markup-${Date.now()}`,
       label: "W3C Markup Validation",
-      url: "https://example.com",
-      status: "error",
-      score: 72,
+      url,
+      status: "warning",
+      score: 85,
       timestamp: Date.now(),
-      message: "Found 5 HTML validation errors and 3 warnings",
+      message: "API temporarily unavailable - showing sample results",
       details: [
-        { type: "error", message: "Missing alt attribute on img element", line: 23 },
-        { type: "error", message: "Unclosed div element", line: 45 },
-        { type: "warning", message: "Consider using semantic HTML5 elements", line: 12 }
+        { type: "warning", message: "Unable to connect to validation service" }
       ],
       recommendations: [
-        "Add alt attributes to all img elements for accessibility",
-        "Ensure all HTML elements are properly closed",
-        "Use semantic HTML5 elements like <header>, <main>, <footer>"
+        "Try refreshing the page to retry validation",
+        "Check your internet connection"
+      ]
+    },
+    "contrast": {
+      id: `contrast-${Date.now()}`,
+      label: "Contrast Checker",
+      url,
+      status: "warning",
+      score: 85,
+      timestamp: Date.now(),
+      message: "API temporarily unavailable - showing sample results",
+      details: [
+        { type: "warning", message: "Unable to analyze contrast ratios" }
+      ],
+      recommendations: [
+        "Try refreshing the page to retry validation",
+        "Use online contrast checkers as an alternative"
+      ]
+    },
+    "accessibility": {
+      id: `accessibility-${Date.now()}`,
+      label: "Accessibility Check",
+      url,
+      status: "warning",
+      score: 85,
+      timestamp: Date.now(),
+      message: "API temporarily unavailable - showing sample results",
+      details: [
+        { type: "warning", message: "Unable to perform accessibility analysis" }
+      ],
+      recommendations: [
+        "Try refreshing the page to retry validation",
+        "Use browser accessibility dev tools"
+      ]
+    },
+    "lighthouse": {
+      id: `lighthouse-${Date.now()}`,
+      label: "Lighthouse Report",
+      url,
+      status: "warning",
+      score: 85,
+      timestamp: Date.now(),
+      message: "API temporarily unavailable - showing sample results",
+      details: [
+        { type: "warning", message: "Unable to perform performance analysis" }
+      ],
+      recommendations: [
+        "Try refreshing the page to retry validation",
+        "Use Google PageSpeed Insights directly"
+      ]
+    },
+    "seo": {
+      id: `seo-${Date.now()}`,
+      label: "SEO Analysis",
+      url,
+      status: "warning",
+      score: 85,
+      timestamp: Date.now(),
+      message: "API temporarily unavailable - showing sample results",
+      details: [
+        { type: "warning", message: "Unable to perform SEO analysis" }
+      ],
+      recommendations: [
+        "Try refreshing the page to retry validation",
+        "Use SEO analysis tools manually"
+      ]
+    },
+    "security": {
+      id: `security-${Date.now()}`,
+      label: "Security Headers",
+      url,
+      status: "warning",
+      score: 85,
+      timestamp: Date.now(),
+      message: "API temporarily unavailable - showing sample results",
+      details: [
+        { type: "warning", message: "Unable to analyze security headers" }
+      ],
+      recommendations: [
+        "Try refreshing the page to retry validation",
+        "Use Security Headers.com to check manually"
       ]
     }
   };
 
-  return mockReports[id] || null;
+  return fallbackTemplates[reportType] || null;
 }
 
-export default async function ReportPage({ params }: ReportPageProps) {
-  const report = await getReportData(params.id);
+export default function ReportPage() {
+  const params = useParams();
+  const id = params.id as string;
+  const [report, setReport] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!report) {
-    notFound();
+  useEffect(() => {
+    async function fetchReportData() {
+      try {
+        setLoading(true);
+        const reportData = await getReportData(id);
+        if (!reportData) {
+          setError("Report not found");
+          return;
+        }
+        setReport(reportData);
+      } catch (err) {
+        console.error("Error fetching report:", err);
+        setError("Failed to load report");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (id) {
+      fetchReportData();
+    }
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted dark:from-background dark:to-card">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                <p className="text-muted-foreground">Loading report...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !report) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted dark:from-background dark:to-card">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-foreground mb-4">Report Not Found</h1>
+              <p className="text-muted-foreground mb-6">{error || "The requested report could not be found."}</p>
+              <Link href="/">
+                <Button>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Home
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const getStatusColor = (status: string) => {

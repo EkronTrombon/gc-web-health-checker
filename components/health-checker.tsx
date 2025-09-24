@@ -110,26 +110,67 @@ export function HealthChecker() {
   };
 
   const runHealthCheck = async (checkType: string, data: CrawlData) => {
-    // Placeholder for actual health check logic
-    // This will be implemented in the next step
-    const result: HealthCheckResult = {
-      id: checkType,
-      label: enabledHealthChecks.find(c => c.id === checkType)?.label || checkType,
-      status: "success",
-      message: `${checkType} check completed successfully`,
-      timestamp: Date.now(),
-      reportId: `${checkType}-${Date.now()}` // Generate unique report ID
-    };
+    try {
+      // Call the appropriate validation API
+      const apiEndpoint = `/api/validate/${checkType}`;
+      const requestBody = checkType === 'security' || checkType === 'lighthouse'
+        ? { url: data.url }
+        : { url: data.url, html: data.html };
 
-    setHealthResults(prev => [...prev.filter(r => r.id !== checkType), result]);
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
 
-    // Store report data for the report page (in a real app, this would be saved to a database)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(`report-${result.reportId}`, JSON.stringify({
-        ...result,
-        url: data.url,
-        crawlData: data
-      }));
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.statusText}`);
+      }
+
+      const validationResult = await response.json();
+
+      if (!validationResult.success) {
+        throw new Error(validationResult.error || 'Validation failed');
+      }
+
+      const reportData = validationResult.data;
+
+      const result: HealthCheckResult = {
+        id: checkType,
+        label: reportData.label || enabledHealthChecks.find(c => c.id === checkType)?.label || checkType,
+        status: reportData.status,
+        message: reportData.message,
+        timestamp: reportData.timestamp,
+        reportId: reportData.id,
+        score: reportData.score
+      };
+
+      setHealthResults(prev => [...prev.filter(r => r.id !== checkType), result]);
+
+      // Store full report data for the report page (in a real app, this would be saved to a database)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`report-${result.reportId}`, JSON.stringify({
+          ...reportData,
+          crawlData: data
+        }));
+      }
+
+    } catch (error) {
+      console.error(`Error running ${checkType} check:`, error);
+
+      // Create error result
+      const result: HealthCheckResult = {
+        id: checkType,
+        label: enabledHealthChecks.find(c => c.id === checkType)?.label || checkType,
+        status: "error",
+        message: error instanceof Error ? error.message : "An unknown error occurred",
+        timestamp: Date.now(),
+        reportId: `${checkType}-${Date.now()}-error`
+      };
+
+      setHealthResults(prev => [...prev.filter(r => r.id !== checkType), result]);
     }
   };
 
