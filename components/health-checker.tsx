@@ -292,11 +292,11 @@ export function HealthChecker() {
               <h3 className="text-lg font-semibold text-foreground mb-4">
                 Health Check Results
               </h3>
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {healthResults.map((result) => (
-                  <div
+                  <Card
                     key={result.id}
-                    className={`p-4 rounded-lg border ${
+                    className={`p-4 transition-all hover:shadow-lg ${
                       result.status === "success"
                         ? "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800"
                         : result.status === "warning"
@@ -306,11 +306,11 @@ export function HealthChecker() {
                         : "bg-gray-50 border-gray-200 dark:bg-gray-950/20 dark:border-gray-800"
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-foreground">{result.label}</h4>
-                      <div className="flex items-center space-x-2">
+                    <div className="flex flex-col h-full space-y-3">
+                      <div className="flex items-start justify-between">
+                        <h4 className="font-semibold text-foreground text-base">{result.label}</h4>
                         <div
-                          className={`px-2 py-1 rounded text-xs font-medium ${
+                          className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${
                             result.status === "success"
                               ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
                               : result.status === "warning"
@@ -322,21 +322,27 @@ export function HealthChecker() {
                         >
                           {result.status.toUpperCase()}
                         </div>
-                        {result.reportId && (
-                          <Link href={`/report/${result.reportId}`}>
-                            <Button variant="ghost" size="sm" className="h-6 px-2">
-                              <ExternalLink className="h-3 w-3 mr-1" />
-                              Report
-                            </Button>
-                          </Link>
-                        )}
                       </div>
+
+                      {result.score !== undefined && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Score</span>
+                          <span className="text-2xl font-bold text-foreground">{result.score}<span className="text-sm text-muted-foreground">/100</span></span>
+                        </div>
+                      )}
+
+                      <p className="text-sm text-muted-foreground flex-grow line-clamp-3">{result.message}</p>
+
+                      {result.reportId && (
+                        <Link href={`/report/${result.reportId}`} target="_blank" rel="noopener noreferrer" className="mt-auto">
+                          <Button variant="outline" size="sm" className="w-full">
+                            <ExternalLink className="h-3 w-3 mr-2" />
+                            View Full Report
+                          </Button>
+                        </Link>
+                      )}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-2">{result.message}</p>
-                    {result.score !== undefined && (
-                      <p className="text-sm font-medium mt-1">Score: {result.score}/100</p>
-                    )}
-                  </div>
+                  </Card>
                 ))}
               </div>
             </div>
