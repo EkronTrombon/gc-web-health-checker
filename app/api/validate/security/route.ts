@@ -28,9 +28,6 @@ export async function POST(request: NextRequest) {
     const mediumCount = securityIssues.filter(issue => issue.severity === 'medium').length;
     const lowCount = securityIssues.filter(issue => issue.severity === 'low').length;
 
-    const errorCount = criticalCount + highCount;
-    const warningCount = mediumCount + lowCount;
-
     // Calculate score based on security issues
     let score = 100;
     score -= (criticalCount * 25);

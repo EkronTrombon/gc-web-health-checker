@@ -22,7 +22,9 @@ export async function POST(request: NextRequest) {
 
     // If no HTML provided, crawl the URL first
     if (!htmlContent && url) {
-      const crawlResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/crawl`, {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                      (request.headers.get('host') ? `http://${request.headers.get('host')}` : 'http://localhost:3000');
+      const crawlResponse = await fetch(`${baseUrl}/api/crawl`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -40,9 +42,15 @@ export async function POST(request: NextRequest) {
       const crawlData = await crawlResponse.json();
       htmlContent = crawlData.data?.html;
 
+      console.log("Crawl data received:", {
+        hasData: !!crawlData.data,
+        hasHtml: !!crawlData.data?.html,
+        htmlLength: crawlData.data?.html?.length || 0
+      });
+
       if (!htmlContent) {
         return NextResponse.json(
-          { error: "No HTML content found to validate" },
+          { error: "No HTML content found to validate", crawlData },
           { status: 400 }
         );
       }

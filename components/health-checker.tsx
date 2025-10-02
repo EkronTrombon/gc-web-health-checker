@@ -91,8 +91,10 @@ export function HealthChecker() {
         setCrawlData(data);
       }
 
-      // Run the specific health check
-      await runHealthCheck(checkType, data);
+      // Run the specific health check only if we have data
+      if (data) {
+        await runHealthCheck(checkType, data);
+      }
     } catch (error) {
       console.error(`Error running ${checkType} check:`, error);
       // Add error result
@@ -187,9 +189,11 @@ export function HealthChecker() {
         setCrawlData(data);
       }
 
-      // Run all enabled health checks
-      for (const check of enabledHealthChecks) {
-        await runHealthCheck(check.id, data);
+      // Run all enabled health checks only if we have data
+      if (data) {
+        for (const check of enabledHealthChecks) {
+          await runHealthCheck(check.id, data);
+        }
       }
     } catch (error) {
       console.error("Error running all checks:", error);

@@ -25,7 +25,9 @@ export async function POST(request: NextRequest) {
 
     // If no HTML provided, crawl the URL first
     if (!htmlContent && url) {
-      const crawlResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/crawl`, {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                      (request.headers.get('host') ? `http://${request.headers.get('host')}` : 'http://localhost:3000');
+      const crawlResponse = await fetch(`${baseUrl}/api/crawl`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -58,9 +60,6 @@ export async function POST(request: NextRequest) {
     const highPriorityCount = seoIssues.filter(issue => issue.priority === 'high').length;
     const mediumPriorityCount = seoIssues.filter(issue => issue.priority === 'medium').length;
     const lowPriorityCount = seoIssues.filter(issue => issue.priority === 'low').length;
-
-    const errorCount = highPriorityCount;
-    const warningCount = mediumPriorityCount + lowPriorityCount;
 
     // Calculate score based on SEO factors
     let score = 100;
@@ -308,7 +307,6 @@ function checkImagesForSEO(document: Document, issues: SEOIssue[]): void {
 
   images.forEach(img => {
     const alt = img.getAttribute('alt');
-    const src = img.getAttribute('src');
 
     if (!alt && alt !== '') {
       imagesWithoutAlt++;
@@ -385,7 +383,6 @@ function checkOpenGraph(document: Document, issues: SEOIssue[]): void {
   const ogTitle = document.querySelector('meta[property="og:title"]');
   const ogDescription = document.querySelector('meta[property="og:description"]');
   const ogImage = document.querySelector('meta[property="og:image"]');
-  const ogUrl = document.querySelector('meta[property="og:url"]');
 
   if (!ogTitle) {
     issues.push({
@@ -420,7 +417,6 @@ function checkOpenGraph(document: Document, issues: SEOIssue[]): void {
 
 function checkTwitterCards(document: Document, issues: SEOIssue[]): void {
   const twitterCard = document.querySelector('meta[name="twitter:card"]');
-  const twitterTitle = document.querySelector('meta[name="twitter:title"]');
 
   if (!twitterCard) {
     issues.push({

@@ -1,11 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { notFound, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
+
+interface ReportDetail {
+  type: string;
+  message: string;
+  element?: string;
+  line?: number;
+  [key: string]: unknown;
+}
+
+interface ReportData {
+  id: string;
+  label: string;
+  url: string;
+  status: "success" | "warning" | "error";
+  score?: number;
+  timestamp: number;
+  message: string;
+  details?: ReportDetail[];
+  recommendations?: string[];
+}
 
 // This would typically fetch from a database or cache
 async function getReportData(id: string) {
@@ -72,8 +92,8 @@ async function getReportData(id: string) {
 }
 
 // Fallback mock data in case APIs fail
-function getFallbackData(reportType: string, url: string) {
-  const fallbackTemplates: Record<string, any> = {
+function getFallbackData(reportType: string, url: string): ReportData | null {
+  const fallbackTemplates: Record<string, ReportData> = {
     "markup": {
       id: `markup-${Date.now()}`,
       label: "W3C Markup Validation",
@@ -178,7 +198,7 @@ function getFallbackData(reportType: string, url: string) {
 export default function ReportPage() {
   const params = useParams();
   const id = params.id as string;
-  const [report, setReport] = useState<any>(null);
+  const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -327,7 +347,7 @@ export default function ReportPage() {
                 Detailed Issues
               </h2>
               <div className="space-y-3">
-                {report.details.map((detail: any, index: number) => (
+                {report.details.map((detail: ReportDetail, index: number) => (
                   <div
                     key={index}
                     className={`p-4 rounded-lg border ${

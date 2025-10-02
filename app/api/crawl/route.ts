@@ -33,28 +33,35 @@ export async function POST(request: NextRequest) {
     });
 
     if (!scrapeResult.success) {
+      console.error("Firecrawl scrape failed:", scrapeResult);
       return NextResponse.json(
         { error: "Failed to crawl URL", details: scrapeResult.error },
         { status: 500 }
       );
     }
 
+    console.log("Firecrawl response structure:", {
+      hasHtml: !!scrapeResult.html,
+      hasMarkdown: !!scrapeResult.markdown,
+      responseKeys: Object.keys(scrapeResult)
+    });
+
     // Extract useful data for health checks
     const crawlData = {
       url: url,
-      title: scrapeResult.data?.metadata?.title || "",
-      description: scrapeResult.data?.metadata?.description || "",
-      keywords: scrapeResult.data?.metadata?.keywords || "",
-      ogTitle: scrapeResult.data?.metadata?.ogTitle || "",
-      ogDescription: scrapeResult.data?.metadata?.ogDescription || "",
-      ogImage: scrapeResult.data?.metadata?.ogImage || "",
-      html: scrapeResult.data?.html || "",
-      markdown: scrapeResult.data?.markdown || "",
-      statusCode: scrapeResult.data?.metadata?.statusCode || 200,
-      responseTime: scrapeResult.data?.metadata?.responseTime || 0,
-      screenshot: scrapeResult.data?.screenshot || null,
-      links: scrapeResult.data?.links || [],
-      metadata: scrapeResult.data?.metadata || {}
+      title: scrapeResult.metadata?.title || scrapeResult.title || "",
+      description: scrapeResult.metadata?.description || scrapeResult.description || "",
+      keywords: scrapeResult.metadata?.keywords || "",
+      ogTitle: scrapeResult.metadata?.ogTitle || "",
+      ogDescription: scrapeResult.metadata?.ogDescription || "",
+      ogImage: scrapeResult.metadata?.ogImage || "",
+      html: scrapeResult.html || "",
+      markdown: scrapeResult.markdown || "",
+      statusCode: scrapeResult.metadata?.statusCode || 200,
+      responseTime: scrapeResult.metadata?.responseTime || 0,
+      screenshot: scrapeResult.screenshot || null,
+      links: scrapeResult.links || [],
+      metadata: scrapeResult.metadata || {}
     };
 
     return NextResponse.json({

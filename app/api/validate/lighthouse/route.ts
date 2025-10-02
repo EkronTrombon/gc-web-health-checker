@@ -9,6 +9,15 @@ interface LighthouseIssue {
   impact?: 'high' | 'medium' | 'low';
 }
 
+interface PerformanceMetrics {
+  firstContentfulPaint: number;
+  largestContentfulPaint: number;
+  speedIndex: number;
+  cumulativeLayoutShift: number;
+  firstInputDelay: number;
+  performanceScore?: number;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { url } = await request.json();
@@ -399,7 +408,7 @@ function generateMetrics(issues: LighthouseIssue[], responseTime: number) {
   };
 }
 
-function generateLighthouseRecommendations(issues: LighthouseIssue[], metrics: any): string[] {
+function generateLighthouseRecommendations(issues: LighthouseIssue[], metrics: PerformanceMetrics): string[] {
   const recommendations: string[] = [];
 
   if (issues.some(issue => issue.message.includes('image'))) {
@@ -418,7 +427,7 @@ function generateLighthouseRecommendations(issues: LighthouseIssue[], metrics: a
     recommendations.push('Serve all content over HTTPS for security and performance');
   }
 
-  if (metrics.performanceScore < 90) {
+  if (metrics.performanceScore && metrics.performanceScore < 90) {
     recommendations.push('Focus on Core Web Vitals: LCP, FID, and CLS improvements');
   }
 

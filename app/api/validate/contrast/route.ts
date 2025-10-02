@@ -25,7 +25,9 @@ export async function POST(request: NextRequest) {
 
     // If no HTML provided, crawl the URL first
     if (!htmlContent && url) {
-      const crawlResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/crawl`, {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                      (request.headers.get('host') ? `http://${request.headers.get('host')}` : 'http://localhost:3000');
+      const crawlResponse = await fetch(`${baseUrl}/api/crawl`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

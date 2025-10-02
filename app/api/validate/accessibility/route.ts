@@ -24,7 +24,9 @@ export async function POST(request: NextRequest) {
 
     // If no HTML provided, crawl the URL first
     if (!htmlContent && url) {
-      const crawlResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/crawl`, {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                      (request.headers.get('host') ? `http://${request.headers.get('host')}` : 'http://localhost:3000');
+      const crawlResponse = await fetch(`${baseUrl}/api/crawl`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -40,6 +42,7 @@ export async function POST(request: NextRequest) {
       }
 
       const crawlData = await crawlResponse.json();
+      // The crawl API returns { success: true, data: { html: ..., ... } }
       htmlContent = crawlData.data?.html;
 
       if (!htmlContent) {
@@ -57,9 +60,6 @@ export async function POST(request: NextRequest) {
     const seriousCount = accessibilityIssues.filter(issue => issue.severity === 'serious').length;
     const moderateCount = accessibilityIssues.filter(issue => issue.severity === 'moderate').length;
     const minorCount = accessibilityIssues.filter(issue => issue.severity === 'minor').length;
-
-    const errorCount = criticalCount + seriousCount;
-    const warningCount = moderateCount + minorCount;
 
     // Calculate score based on severity
     const score = Math.max(0, Math.min(100, 100 - (criticalCount * 20) - (seriousCount * 12) - (moderateCount * 6) - (minorCount * 2)));
@@ -147,7 +147,7 @@ async function analyzeAccessibility(html: string): Promise<AccessibilityIssue[]>
 function checkImageAltText(document: Document, issues: AccessibilityIssue[]): void {
   const images = document.querySelectorAll('img');
 
-  images.forEach((img, index) => {
+  images.forEach((img) => {
     const alt = img.getAttribute('alt');
     const src = img.getAttribute('src');
 
