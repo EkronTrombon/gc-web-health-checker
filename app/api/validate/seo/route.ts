@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { JSDOM } from "jsdom";
+import { analyzePageSEO, isDataForSEOConfigured } from "@/lib/dataforseo";
 
 interface SEOIssue {
   type: string;
@@ -22,51 +23,88 @@ export async function POST(request: NextRequest) {
 
     let htmlContent = html;
     let pageUrl = url;
+    let seoIssues: SEOIssue[] = [];
+    let score = 0;
+    let dataForSEOMetrics = null;
 
-    // If no HTML provided, crawl the URL first
-    if (!htmlContent && url) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
-                      (request.headers.get('host') ? `http://${request.headers.get('host')}` : 'http://localhost:3000');
-      const crawlResponse = await fetch(`${baseUrl}/api/crawl`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url }),
-      });
+    // Try to use DataForSEO API if configured and URL is provided
+    if (url && isDataForSEOConfigured()) {
+      try {
+        console.log('Using DataForSEO API for advanced SEO analysis...');
+        dataForSEOMetrics = await analyzePageSEO(url);
 
-      if (!crawlResponse.ok) {
-        return NextResponse.json(
-          { error: "Failed to crawl URL for validation" },
-          { status: 500 }
-        );
-      }
+        // Extract issues from DataForSEO metrics
+        if (dataForSEOMetrics.issues) {
+          seoIssues = dataForSEOMetrics.issues.map(issue => ({
+            ...issue,
+            category: determineCategoryFromIssue(issue)
+          }));
+        }
 
-      const crawlData = await crawlResponse.json();
-      htmlContent = crawlData.data?.html;
-      pageUrl = crawlData.data?.url || url;
+        // Use DataForSEO score if available
+        if (dataForSEOMetrics.onPageScore !== undefined) {
+          score = Math.round(dataForSEOMetrics.onPageScore);
+        }
 
-      if (!htmlContent) {
-        return NextResponse.json(
-          { error: "No HTML content found to validate" },
-          { status: 400 }
-        );
+        pageUrl = url;
+      } catch (dataForSEOError) {
+        console.warn('DataForSEO analysis failed, falling back to local analysis:', dataForSEOError);
+        // Fall back to local analysis if DataForSEO fails
+        dataForSEOMetrics = null;
       }
     }
 
-    // Analyze SEO factors
-    const seoIssues = await analyzeSEO(htmlContent, pageUrl);
+    // If DataForSEO didn't provide results, use local analysis
+    if (!dataForSEOMetrics) {
+      // If no HTML provided, crawl the URL first
+      if (!htmlContent && url) {
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
+                        (request.headers.get('host') ? `http://${request.headers.get('host')}` : 'http://localhost:3000');
+        const crawlResponse = await fetch(`${baseUrl}/api/crawl`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url }),
+        });
+
+        if (!crawlResponse.ok) {
+          return NextResponse.json(
+            { error: "Failed to crawl URL for validation" },
+            { status: 500 }
+          );
+        }
+
+        const crawlData = await crawlResponse.json();
+        htmlContent = crawlData.data?.html;
+        pageUrl = crawlData.data?.url || url;
+
+        if (!htmlContent) {
+          return NextResponse.json(
+            { error: "No HTML content found to validate" },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Analyze SEO factors locally
+      seoIssues = await analyzeSEO(htmlContent, pageUrl);
+
+      const highPriorityCount = seoIssues.filter(issue => issue.priority === 'high').length;
+      const mediumPriorityCount = seoIssues.filter(issue => issue.priority === 'medium').length;
+      const lowPriorityCount = seoIssues.filter(issue => issue.priority === 'low').length;
+
+      // Calculate score based on SEO factors
+      score = 100;
+      score -= (highPriorityCount * 20);
+      score -= (mediumPriorityCount * 8);
+      score -= (lowPriorityCount * 3);
+      score = Math.max(0, Math.min(100, Math.round(score)));
+    }
 
     const highPriorityCount = seoIssues.filter(issue => issue.priority === 'high').length;
     const mediumPriorityCount = seoIssues.filter(issue => issue.priority === 'medium').length;
     const lowPriorityCount = seoIssues.filter(issue => issue.priority === 'low').length;
-
-    // Calculate score based on SEO factors
-    let score = 100;
-    score -= (highPriorityCount * 20);
-    score -= (mediumPriorityCount * 8);
-    score -= (lowPriorityCount * 3);
-    score = Math.max(0, Math.min(100, Math.round(score)));
 
     const status = highPriorityCount > 0 ? 'error' : mediumPriorityCount > 2 ? 'warning' : 'success';
     const totalIssues = seoIssues.length;
@@ -85,7 +123,12 @@ export async function POST(request: NextRequest) {
       timestamp: Date.now(),
       message,
       details: seoIssues.slice(0, 15),
-      recommendations
+      recommendations,
+      dataSource: dataForSEOMetrics ? 'DataForSEO API' : 'Local Analysis',
+      dataForSEOMetrics: dataForSEOMetrics ? {
+        checks: dataForSEOMetrics.checks,
+        onPageScore: dataForSEOMetrics.onPageScore
+      } : null
     };
 
     return NextResponse.json({
@@ -103,6 +146,29 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+function determineCategoryFromIssue(issue: any): 'meta' | 'content' | 'structure' | 'performance' | 'mobile' {
+  const element = issue.element?.toLowerCase() || '';
+  const message = issue.message?.toLowerCase() || '';
+
+  if (element.includes('meta') || element.includes('title') || message.includes('meta') || message.includes('title')) {
+    return 'meta';
+  }
+  if (element.includes('h1') || element.includes('h2') || message.includes('heading')) {
+    return 'structure';
+  }
+  if (element.includes('img') || message.includes('image') || message.includes('alt')) {
+    return 'content';
+  }
+  if (message.includes('viewport') || message.includes('mobile')) {
+    return 'mobile';
+  }
+  if (message.includes('performance') || message.includes('speed') || message.includes('load')) {
+    return 'performance';
+  }
+
+  return 'content';
 }
 
 async function analyzeSEO(html: string, url?: string): Promise<SEOIssue[]> {

@@ -16,6 +16,9 @@ interface PerformanceMetrics {
   cumulativeLayoutShift: number;
   firstInputDelay: number;
   performanceScore?: number;
+  accessibilityScore?: number;
+  bestPracticesScore?: number;
+  seoScore?: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -29,51 +32,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // For now, we'll simulate Lighthouse analysis
-    // In a real implementation, you could use:
-    // 1. Google PageSpeed Insights API
-    // 2. Lighthouse CI programmatically
-    // 3. Web.dev API
-    const lighthouseData = await analyzePage(url);
+    let reportData;
+    const apiKey = process.env.GOOGLE_PAGE_SPEED_API_KEY;
 
-    const issues = lighthouseData.issues;
-    const metrics = lighthouseData.metrics;
-
-    const criticalCount = issues.filter(issue => issue.impact === 'high').length;
-    const warningCount = issues.filter(issue => issue.impact === 'medium' || issue.impact === 'low').length;
-
-    // Calculate score based on Core Web Vitals and other metrics
-    let score = 100;
-    score -= (criticalCount * 15);
-    score -= (warningCount * 5);
-
-    // Adjust score based on specific metrics
-    if (metrics.performanceScore < 90) score -= (90 - metrics.performanceScore) * 0.5;
-    if (metrics.accessibilityScore < 90) score -= (90 - metrics.accessibilityScore) * 0.3;
-    if (metrics.bestPracticesScore < 90) score -= (90 - metrics.bestPracticesScore) * 0.2;
-    if (metrics.seoScore < 90) score -= (90 - metrics.seoScore) * 0.2;
-
-    score = Math.max(0, Math.min(100, Math.round(score)));
-
-    const status = criticalCount > 0 ? 'error' : warningCount > 3 ? 'warning' : 'success';
-    const message = issues.length === 0
-      ? 'Excellent performance and best practices scores'
-      : `Performance analysis completed - ${criticalCount} critical issues, ${warningCount} improvements needed`;
-
-    const recommendations = generateLighthouseRecommendations(issues, metrics);
-
-    const reportData = {
-      id: `lighthouse-${Date.now()}`,
-      label: "Lighthouse Report",
-      url,
-      status,
-      score,
-      timestamp: Date.now(),
-      message,
-      details: issues.slice(0, 15),
-      recommendations,
-      metrics
-    };
+    if (apiKey) {
+      try {
+        console.log("Using Google PageSpeed Insights API...");
+        reportData = await analyzeWithPageSpeedAPI(url, apiKey);
+      } catch (error) {
+        console.error("PageSpeed API failed, falling back to simulation:", error);
+        reportData = await runSimulation(url);
+      }
+    } else {
+      console.log("No API key found, running simulation...");
+      reportData = await runSimulation(url);
+    }
 
     return NextResponse.json({
       success: true,
@@ -92,10 +65,98 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function analyzePage(url: string) {
-  // This is a simplified simulation of Lighthouse analysis
-  // In production, you would integrate with actual Lighthouse or PageSpeed Insights API
+async function analyzeWithPageSpeedAPI(url: string, apiKey: string) {
+  const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&key=${apiKey}&category=PERFORMANCE&category=ACCESSIBILITY&category=BEST_PRACTICES&category=SEO`;
 
+  const response = await fetch(apiUrl);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`PageSpeed API error: ${response.status} ${errorText}`);
+  }
+
+  const data = await response.json();
+  const lighthouseResult = data.lighthouseResult;
+
+  // Extract scores (0-1) and convert to 0-100
+  const performanceScore = Math.round((lighthouseResult.categories.performance?.score || 0) * 100);
+  const accessibilityScore = Math.round((lighthouseResult.categories.accessibility?.score || 0) * 100);
+  const bestPracticesScore = Math.round((lighthouseResult.categories['best-practices']?.score || 0) * 100);
+  const seoScore = Math.round((lighthouseResult.categories.seo?.score || 0) * 100);
+
+  // Overall score is an average
+  const score = Math.round((performanceScore + accessibilityScore + bestPracticesScore + seoScore) / 4);
+
+  // Extract metrics
+  const audits = lighthouseResult.audits;
+  const metrics: PerformanceMetrics = {
+    firstContentfulPaint: audits['first-contentful-paint']?.numericValue || 0,
+    largestContentfulPaint: audits['largest-contentful-paint']?.numericValue || 0,
+    speedIndex: audits['speed-index']?.numericValue || 0,
+    cumulativeLayoutShift: audits['cumulative-layout-shift']?.numericValue || 0,
+    firstInputDelay: audits['max-potential-fid']?.numericValue || 0, // FID is deprecated/hard to get, using max potential FID or TBT as proxy
+    performanceScore,
+    accessibilityScore,
+    bestPracticesScore,
+    seoScore
+  };
+
+  // Extract issues
+  const issues: LighthouseIssue[] = [];
+
+  // Helper to add issues from audits
+  const addIssuesFromCategory = (categoryName: string) => {
+    const category = lighthouseResult.categories[categoryName];
+    if (!category) return;
+
+    category.auditRefs.forEach((ref: any) => {
+      const audit = audits[ref.id];
+      // Score of 1 is perfect, 0 is fail. null score means informational/not applicable
+      if (audit && audit.score !== null && audit.score < 0.9) {
+        issues.push({
+          type: audit.score < 0.5 ? 'error' : 'warning',
+          message: audit.title,
+          metric: category.title,
+          value: audit.numericValue,
+          impact: audit.score < 0.5 ? 'high' : 'medium'
+        });
+      }
+    });
+  };
+
+  addIssuesFromCategory('performance');
+  addIssuesFromCategory('accessibility');
+  addIssuesFromCategory('best-practices');
+  addIssuesFromCategory('seo');
+
+  const criticalCount = issues.filter(i => i.impact === 'high').length;
+  const warningCount = issues.filter(i => i.impact === 'medium').length;
+
+  const status = criticalCount > 0 ? 'error' : warningCount > 3 ? 'warning' : 'success';
+
+  const message = issues.length === 0
+    ? 'Excellent performance and best practices scores'
+    : `Analysis completed - ${criticalCount} critical issues, ${warningCount} improvements needed`;
+
+  const recommendations = generateLighthouseRecommendations(issues, metrics);
+
+  return {
+    id: `lighthouse-${Date.now()}`,
+    label: "Lighthouse Report",
+    url,
+    status,
+    score,
+    timestamp: Date.now(),
+    message,
+    details: issues.slice(0, 15),
+    recommendations,
+    metrics,
+    dataSource: 'Google PageSpeed Insights API'
+  };
+}
+
+async function runSimulation(url: string) {
+  // This is a simplified simulation of Lighthouse analysis
   const issues: LighthouseIssue[] = [];
 
   try {
@@ -144,7 +205,42 @@ async function analyzePage(url: string) {
     // Generate simulated metrics based on analysis
     const metrics = generateMetrics(issues, responseTime);
 
-    return { issues, metrics };
+    const criticalCount = issues.filter(issue => issue.impact === 'high').length;
+    const warningCount = issues.filter(issue => issue.impact === 'medium' || issue.impact === 'low').length;
+
+    // Calculate score based on Core Web Vitals and other metrics
+    let score = 100;
+    score -= (criticalCount * 15);
+    score -= (warningCount * 5);
+
+    // Adjust score based on specific metrics
+    if (metrics.performanceScore && metrics.performanceScore < 90) score -= (90 - metrics.performanceScore) * 0.5;
+    if (metrics.accessibilityScore && metrics.accessibilityScore < 90) score -= (90 - metrics.accessibilityScore) * 0.3;
+    if (metrics.bestPracticesScore && metrics.bestPracticesScore < 90) score -= (90 - metrics.bestPracticesScore) * 0.2;
+    if (metrics.seoScore && metrics.seoScore < 90) score -= (90 - metrics.seoScore) * 0.2;
+
+    score = Math.max(0, Math.min(100, Math.round(score)));
+
+    const status = criticalCount > 0 ? 'error' : warningCount > 3 ? 'warning' : 'success';
+    const message = issues.length === 0
+      ? 'Excellent performance and best practices scores'
+      : `Performance analysis completed - ${criticalCount} critical issues, ${warningCount} improvements needed`;
+
+    const recommendations = generateLighthouseRecommendations(issues, metrics);
+
+    return {
+      id: `lighthouse-${Date.now()}`,
+      label: "Lighthouse Report",
+      url,
+      status,
+      score,
+      timestamp: Date.now(),
+      message,
+      details: issues.slice(0, 15),
+      recommendations,
+      metrics,
+      dataSource: 'Simulation (Local Analysis)'
+    };
 
   } catch (error) {
     console.error('Error analyzing page:', error);
@@ -155,7 +251,15 @@ async function analyzePage(url: string) {
     });
 
     return {
-      issues,
+      id: `lighthouse-${Date.now()}`,
+      label: "Lighthouse Report",
+      url,
+      status: 'error',
+      score: 0,
+      timestamp: Date.now(),
+      message: 'Failed to analyze page performance',
+      details: issues,
+      recommendations: [],
       metrics: {
         performanceScore: 0,
         accessibilityScore: 0,
@@ -166,7 +270,8 @@ async function analyzePage(url: string) {
         speedIndex: 0,
         cumulativeLayoutShift: 0,
         firstInputDelay: 0
-      }
+      },
+      dataSource: 'Simulation (Failed)'
     };
   }
 }
