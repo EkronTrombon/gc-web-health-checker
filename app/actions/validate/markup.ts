@@ -43,37 +43,23 @@ export async function validateHTMLMarkup(
         const errorCount = details.filter(d => d.type === 'error').length;
         const warningCount = details.filter(d => d.type === 'warning').length;
         const totalIssues = errorCount + warningCount;
-
-        const status = errorCount > 0 ? 'error' : warningCount > 0 ? 'warning' : 'success';
-        const message = totalIssues === 0
-            ? 'HTML markup is valid with no issues found'
-            : `Found ${errorCount} HTML validation errors and ${warningCount} warnings`;
-
-        const recommendations = generateMarkupRecommendations(details);
-
-        return {
-            id: 'markup',
-            label: 'W3C Markup Validation',
-            status,
-            score,
-            message,
-            timestamp: Date.now(),
+        timestamp: Date.now(),
             details: details.slice(0, 20).map(detail => ({
                 type: detail.type as 'error' | 'warning' | 'info',
                 message: detail.line ? `Line ${detail.line}: ${detail.message}` : detail.message
             })),
-            reportId: `markup-${Date.now()}`
-        };
+                reportId: `markup-${Date.now()}`
+    };
 
-    } catch (error) {
-        console.error('Markup validation error:', error);
+} catch (error) {
+    console.error('Markup validation error:', error);
 
-        return {
-            id: 'markup',
-            label: 'W3C Markup Validation',
-            status: 'error',
-            message: error instanceof Error ? error.message : 'Unknown error occurred',
-            timestamp: Date.now()
-        };
-    }
+    return {
+        id: 'markup',
+        label: 'W3C Markup Validation',
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        timestamp: Date.now()
+    };
+}
 }

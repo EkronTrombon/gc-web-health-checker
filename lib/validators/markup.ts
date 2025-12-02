@@ -5,39 +5,24 @@ export interface ValidationError {
     column?: number;
 }
 
-/**
- * Validates HTML markup using W3C validator API with fallback to basic validation
- * @param html - The HTML content to validate
- * @returns Array of validation errors and warnings
- */
-export async function validateMarkup(html: string): Promise<ValidationError[]> {
-    const details: ValidationError[] = [];
-
-    try {
-        // Try W3C HTML Validator API first
-        const validatorResponse = await fetch('https://validator.w3.org/nu/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'text/html; charset=utf-8',
-                'User-Agent': 'Web Health Checker/1.0',
             },
-            body: html,
+body: html,
         });
 
-        if (validatorResponse.ok) {
-            const validatorText = await validatorResponse.text();
-            const w3cResults = parseW3CResponse(validatorText);
+if (validatorResponse.ok) {
+    const validatorText = await validatorResponse.text();
+    const w3cResults = parseW3CResponse(validatorText);
 
-            if (w3cResults.length > 0) {
-                return w3cResults;
-            }
-        }
-    } catch (error) {
-        console.warn('W3C validator unavailable, using basic validation:', error);
+    if (w3cResults.length > 0) {
+        return w3cResults;
     }
+}
+    } catch (error) {
+    console.warn('W3C validator unavailable, using basic validation:', error);
+}
 
-    // Fallback to basic HTML validation
-    return validateHTMLBasic(html);
+// Fallback to basic HTML validation
+return validateHTMLBasic(html);
 }
 
 /**

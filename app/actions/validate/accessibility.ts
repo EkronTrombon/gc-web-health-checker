@@ -58,40 +58,25 @@ export async function validateAccessibility(
         const status = criticalCount > 0 || seriousCount > 0 ? 'error' : moderateCount > 0 ? 'warning' : 'success';
 
         // Generate message
-        const totalIssues = issues.length;
-        const message = totalIssues === 0
-            ? 'No accessibility violations detected - WCAG compliant'
-            : `Found ${totalIssues} accessibility violations: ${criticalCount} critical, ${seriousCount} serious, ${moderateCount} moderate, ${minorCount} minor`;
-
-        // Generate recommendations
-        const recommendations = generateAccessibilityRecommendations(issues);
-
-        // Create result
-        const result: HealthCheckResult = {
-            id: 'accessibility',
-            label: 'Accessibility Check',
-            status,
-            score,
-            message,
-            timestamp: Date.now(),
+        timestamp: Date.now(),
             details: issues.slice(0, 20).map(issue => ({
                 type: issue.type as 'error' | 'warning' | 'info',
                 message: `${issue.message}${issue.wcagGuideline ? ` (${issue.wcagGuideline})` : ''}`
             })),
-            reportId: `accessibility-${Date.now()}`
-        };
+                reportId: `accessibility-${Date.now()}`
+    };
 
-        return result;
+    return result;
 
-    } catch (error) {
-        console.error('Accessibility validation error:', error);
+} catch (error) {
+    console.error('Accessibility validation error:', error);
 
-        return {
-            id: 'accessibility',
-            label: 'Accessibility Check',
-            status: 'error',
-            message: error instanceof Error ? error.message : 'Unknown error occurred',
-            timestamp: Date.now()
-        };
-    }
+    return {
+        id: 'accessibility',
+        label: 'Accessibility Check',
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        timestamp: Date.now()
+    };
+}
 }

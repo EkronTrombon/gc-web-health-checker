@@ -40,37 +40,23 @@ export async function validateContrast(
         const errorCount = issues.filter(issue => issue.type === 'error').length;
         const warningCount = issues.filter(issue => issue.type === 'warning').length;
         const totalIssues = errorCount + warningCount;
-
-        const status = errorCount > 0 ? 'error' : warningCount > 0 ? 'warning' : 'success';
-        const message = totalIssues === 0
-            ? 'All text elements meet WCAG contrast requirements'
-            : `Found ${errorCount} contrast errors and ${warningCount} warnings that may affect readability`;
-
-        const recommendations = generateContrastRecommendations(issues);
-
-        return {
-            id: 'contrast',
-            label: 'Contrast Checker',
-            status,
-            score,
-            message,
-            timestamp: Date.now(),
+        timestamp: Date.now(),
             details: issues.slice(0, 15).map(issue => ({
                 type: issue.type as 'error' | 'warning' | 'info',
                 message: issue.message
             })),
-            reportId: `contrast-${Date.now()}`
-        };
+                reportId: `contrast-${Date.now()}`
+    };
 
-    } catch (error) {
-        console.error('Contrast validation error:', error);
+} catch (error) {
+    console.error('Contrast validation error:', error);
 
-        return {
-            id: 'contrast',
-            label: 'Contrast Checker',
-            status: 'error',
-            message: error instanceof Error ? error.message : 'Unknown error occurred',
-            timestamp: Date.now()
-        };
-    }
+    return {
+        id: 'contrast',
+        label: 'Contrast Checker',
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        timestamp: Date.now()
+    };
+}
 }

@@ -44,38 +44,24 @@ export async function validateSEO(
         const mediumPriorityCount = issues.filter(issue => issue.priority === 'medium').length;
         const lowPriorityCount = issues.filter(issue => issue.priority === 'low').length;
 
-        const status = highPriorityCount > 0 ? 'error' : mediumPriorityCount > 2 ? 'warning' : 'success';
-        const totalIssues = issues.length;
-        const message = totalIssues === 0
-            ? 'Excellent SEO optimization - all key factors implemented'
-            : `SEO analysis completed - ${highPriorityCount} critical issues, ${mediumPriorityCount + lowPriorityCount} improvements needed`;
-
-        const recommendations = generateSEORecommendations(issues);
-
-        return {
-            id: 'seo',
-            label: 'SEO Analysis',
-            status,
-            score,
-            message,
-            timestamp: Date.now(),
+        timestamp: Date.now(),
             details: issues.slice(0, 15).map(issue => ({
                 type: issue.type as 'error' | 'warning' | 'info',
                 message: issue.message
             })),
-            reportId: `seo-${Date.now()}`,
-            dataSource: 'Local Analysis'
-        };
+                reportId: `seo-${Date.now()}`,
+                    dataSource: 'Local Analysis'
+    };
 
-    } catch (error) {
-        console.error('SEO validation error:', error);
+} catch (error) {
+    console.error('SEO validation error:', error);
 
-        return {
-            id: 'seo',
-            label: 'SEO Analysis',
-            status: 'error',
-            message: error instanceof Error ? error.message : 'Unknown error occurred',
-            timestamp: Date.now()
-        };
-    }
+    return {
+        id: 'seo',
+        label: 'SEO Analysis',
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        timestamp: Date.now()
+    };
+}
 }

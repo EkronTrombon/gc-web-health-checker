@@ -238,7 +238,7 @@ function checkImagesForSEO(document: Document, issues: SEOIssue[]): void {
     }
 }
 
-function checkInternalLinking(document: Document, issues: SEOIssue[], url?: string): void {
+function checkInternalLinking(document: Document, issues: SEOIssue[], _url?: string): void {
     const links = document.querySelectorAll('a[href]');
     let internalLinks = 0;
 
@@ -324,7 +324,7 @@ function checkStructuredData(document: Document, issues: SEOIssue[]): void {
     }
 }
 
-function checkCanonical(document: Document, issues: SEOIssue[], url?: string): void {
+function checkCanonical(document: Document, issues: SEOIssue[], _url?: string): void {
     const canonical = document.querySelector('link[rel="canonical"]');
 
     if (!canonical) {

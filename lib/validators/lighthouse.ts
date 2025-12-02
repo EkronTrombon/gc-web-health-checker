@@ -86,20 +86,6 @@ export function generateLighthouseRecommendations(result: LighthouseResult): str
 
     if (result.seo < 90) {
         recommendations.push('Add meta descriptions to all pages');
-        recommendations.push('Ensure text is readable and properly sized');
-    }
-
-    return recommendations;
-}
-
-function extractMetrics(lighthouseResult: any): { [key: string]: LighthouseMetric } {
-    if (!lighthouseResult?.audits) return {};
-
-    const metrics: { [key: string]: LighthouseMetric } = {};
-    const importantMetrics = ['first-contentful-paint', 'largest-contentful-paint', 'total-blocking-time', 'cumulative-layout-shift', 'speed-index'];
-
-    for (const metricId of importantMetrics) {
-        const audit = lighthouseResult.audits[metricId];
         if (audit) {
             metrics[metricId] = {
                 score: audit.score || 0,
