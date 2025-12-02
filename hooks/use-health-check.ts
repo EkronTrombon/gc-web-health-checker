@@ -35,21 +35,10 @@ export function useHealthCheck() {
 
     const crawlUrl = async (): Promise<CrawlData | null> => {
         try {
-            const response = await fetch("/api/crawl", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ url }),
-            });
-
-            const result: CrawlResponse = await response.json();
-
-            if (!result.success || !result.data) {
-                throw new Error(result.error || "Failed to crawl URL");
-            }
-
-            return result.data;
+            // Use server action for crawling
+            const { crawlUrl: crawlUrlAction } = await import('@/app/actions/crawl');
+            const data = await crawlUrlAction(url);
+            return data;
         } catch (error) {
             console.error("Crawl error:", error);
             throw error;
@@ -58,28 +47,39 @@ export function useHealthCheck() {
 
     const runHealthCheck = async (checkType: string, data: CrawlData) => {
         try {
-            // Call the appropriate validation API
-            const apiEndpoint = `/api/validate/${checkType}`;
-            const requestBody = checkType === 'security' || checkType === 'lighthouse'
-                ? { url: data.url }
-                : { url: data.url, html: data.html };
+            let validationResult;
 
-            const response = await fetch(apiEndpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody),
-            });
-
-            if (!response.ok) {
-                throw new Error(`API call failed: ${response.statusText}`);
+            // All validators now use server actions
+            if (checkType === 'accessibility') {
+                const { validateAccessibility } = await import('@/app/actions/validate/accessibility');
+                validationResult = await validateAccessibility(data.url, data.html);
+                validationResult = { success: true, data: validationResult };
+            } else if (checkType === 'seo') {
+                const { validateSEO } = await import('@/app/actions/validate/seo');
+                validationResult = await validateSEO(data.url, data.html);
+                validationResult = { success: true, data: validationResult };
+            } else if (checkType === 'markup') {
+                const { validateHTMLMarkup } = await import('@/app/actions/validate/markup');
+                validationResult = await validateHTMLMarkup(data.url, data.html);
+                validationResult = { success: true, data: validationResult };
+            } else if (checkType === 'contrast') {
+                const { validateContrast } = await import('@/app/actions/validate/contrast');
+                validationResult = await validateContrast(data.url, data.html);
+                validationResult = { success: true, data: validationResult };
+            } else if (checkType === 'security') {
+                const { validateSecurity } = await import('@/app/actions/validate/security');
+                validationResult = await validateSecurity(data.url);
+                validationResult = { success: true, data: validationResult };
+            } else if (checkType === 'lighthouse') {
+                const { validateLighthouse } = await import('@/app/actions/validate/lighthouse');
+                validationResult = await validateLighthouse(data.url);
+                validationResult = { success: true, data: validationResult };
+            } else {
+                throw new Error(`Unknown check type: ${checkType}`);
             }
 
-            const validationResult = await response.json();
-
             if (!validationResult.success) {
-                throw new Error(validationResult.error || 'Validation failed');
+                throw new Error('Validation failed');
             }
 
             const reportData = validationResult.data;
@@ -96,12 +96,48 @@ export function useHealthCheck() {
 
             setHealthResults(prev => [...prev.filter(r => r.id !== checkType), result]);
 
-            // Store full report data for the report page (in a real app, this would be saved to a database)
-            if (typeof window !== 'undefined') {
-                localStorage.setItem(`report-${result.reportId}`, JSON.stringify({
+            // Store essential report data for the report page (excluding large data like HTML and screenshots)
+            // In a real app, this would be saved to a database
+            if (typeof window !== 'undefined' && result.reportId) {
+                // Create a lightweight version without large data
+                const lightweightReport = {
                     ...reportData,
-                    crawlData: data
-                }));
+                    // Include only essential crawl metadata, not the full HTML/screenshot
+                    crawlData: {
+                        url: data.url,
+                        title: data.title,
+                        description: data.description,
+                        statusCode: data.statusCode,
+                        responseTime: data.responseTime,
+                        // Exclude: html, markdown, screenshot, links
+                    }
+                };
+
+                try {
+                    localStorage.setItem(`report-${result.reportId}`, JSON.stringify(lightweightReport));
+                } catch (error) {
+                    // Handle quota exceeded error gracefully
+                    if (error instanceof Error && error.name === 'QuotaExceededError') {
+                        console.warn('localStorage quota exceeded. Clearing old reports...');
+                        // Clear old report data to make space
+                        const keys = Object.keys(localStorage);
+                        const reportKeys = keys.filter(key => key.startsWith('report-'));
+                        // Keep only the 5 most recent reports
+                        if (reportKeys.length > 5) {
+                            reportKeys.slice(0, reportKeys.length - 5).forEach(key => {
+                                localStorage.removeItem(key);
+                            });
+                        }
+                        // Try storing again
+                        try {
+                            localStorage.setItem(`report-${result.reportId}`, JSON.stringify(lightweightReport));
+                        } catch (retryError) {
+                            console.error('Failed to store report even after cleanup:', retryError);
+                        }
+                    } else {
+                        console.error('Error storing report:', error);
+                    }
+                }
             }
 
         } catch (error) {
