@@ -53,9 +53,15 @@ export async function crawlUrl(url: string): Promise<CrawlData> {
             statusCode: scrapeResult.metadata?.statusCode || 200,
             responseTime: scrapeResult.metadata?.responseTime || 0,
             screenshot: scrapeResult.screenshot || null,
-            links: (scrapeResult.links || []).map((link: string | { text: string; href: string }) =>
-                typeof link === 'string' ? { text: '', href: link } : link
-            ) as { text: string; href: string }[],
+            links: (scrapeResult.links || []).map((link: unknown) => {
+                if (typeof link === 'string') {
+                    return { text: '', href: link };
+                }
+                if (link && typeof link === 'object' && 'text' in link && 'href' in link) {
+                    return link as { text: string; href: string };
+                }
+                return { text: '', href: '' };
+            }),
             metadata: scrapeResult.metadata || {}
         };
 

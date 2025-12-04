@@ -8,6 +8,13 @@ interface DataForSEOCredentials {
   password: string;
 }
 
+interface OnPageInstantRequest {
+  url: string;
+  enable_javascript?: boolean;
+  enable_browser_rendering?: boolean;
+  load_resources?: boolean;
+}
+
 interface DataForSEOPageData {
   onpage_score?: number;
   checks?: {
@@ -121,7 +128,7 @@ function getCredentials(): DataForSEOCredentials {
  */
 async function makeDataForSEORequest(
   endpoint: string,
-  data?: unknown
+  data?: OnPageInstantRequest[] | Record<string, never>
 ): Promise<DataForSEOResponse> {
   const credentials = getCredentials();
   const auth = Buffer.from(`${credentials.login}:${credentials.password}`).toString('base64');
@@ -132,14 +139,14 @@ async function makeDataForSEORequest(
       'Authorization': `Basic ${auth}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(data),
+    body: data ? JSON.stringify(data) : undefined,
   });
 
   if (!response.ok) {
     throw new Error(`DataForSEO API request failed: ${response.status} ${response.statusText}`);
   }
 
-  return await response.json();
+  return await response.json() as DataForSEOResponse;
 }
 
 /**
