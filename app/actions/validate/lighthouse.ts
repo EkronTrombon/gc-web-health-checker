@@ -3,8 +3,7 @@
 import { HealthCheckResult } from '@/types/crawl';
 import {
     runLighthouse,
-    calculateLighthouseScore,
-    generateLighthouseRecommendations
+    calculateLighthouseScore
 } from '@/lib/validators/lighthouse';
 
 export async function validateLighthouse(url: string): Promise<HealthCheckResult> {

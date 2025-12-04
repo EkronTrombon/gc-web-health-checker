@@ -3,8 +3,7 @@
 import { HealthCheckResult } from '@/types/crawl';
 import {
     analyzeSEO,
-    calculateSEOScore,
-    generateSEORecommendations
+    calculateSEOScore
 } from '@/lib/validators/seo';
 
 /**
@@ -37,12 +36,11 @@ export async function validateSEO(
             }
         }
 
-        const issues = await analyzeSEO(htmlContent, url);
+        const issues = await analyzeSEO(htmlContent);
         const score = calculateSEOScore(issues);
 
         const highPriorityCount = issues.filter(issue => issue.priority === 'high').length;
         const mediumPriorityCount = issues.filter(issue => issue.priority === 'medium').length;
-        const lowPriorityCount = issues.filter(issue => issue.priority === 'low').length;
 
         const status = highPriorityCount > 0 ? 'error' : mediumPriorityCount > 0 ? 'warning' : 'success';
         const message = status === 'error'

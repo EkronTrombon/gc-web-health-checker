@@ -11,10 +11,9 @@ export interface SEOIssue {
 /**
  * Analyzes HTML content for SEO issues
  * @param html - The HTML content to analyze
- * @param url - Optional URL for context-specific checks
  * @returns Array of SEO issues found
  */
-export async function analyzeSEO(html: string, url?: string): Promise<SEOIssue[]> {
+export async function analyzeSEO(html: string): Promise<SEOIssue[]> {
     const issues: SEOIssue[] = [];
 
     try {
@@ -26,11 +25,11 @@ export async function analyzeSEO(html: string, url?: string): Promise<SEOIssue[]
         checkMetaKeywords(document, issues);
         checkHeadingsForSEO(document, issues);
         checkImagesForSEO(document, issues);
-        checkInternalLinking(document, issues, url);
+        checkInternalLinking(document, issues);
         checkOpenGraph(document, issues);
         checkTwitterCards(document, issues);
         checkStructuredData(document, issues);
-        checkCanonical(document, issues, url);
+        checkCanonical(document, issues);
         checkMobileFriendliness(document, issues);
         checkPerformanceForSEO(html, issues);
         checkContentQuality(document, issues);
@@ -238,7 +237,7 @@ function checkImagesForSEO(document: Document, issues: SEOIssue[]): void {
     }
 }
 
-function checkInternalLinking(document: Document, issues: SEOIssue[], _url?: string): void {
+function checkInternalLinking(document: Document, issues: SEOIssue[]): void {
     const links = document.querySelectorAll('a[href]');
     let internalLinks = 0;
 
@@ -324,7 +323,7 @@ function checkStructuredData(document: Document, issues: SEOIssue[]): void {
     }
 }
 
-function checkCanonical(document: Document, issues: SEOIssue[], _url?: string): void {
+function checkCanonical(document: Document, issues: SEOIssue[]): void {
     const canonical = document.querySelector('link[rel="canonical"]');
 
     if (!canonical) {

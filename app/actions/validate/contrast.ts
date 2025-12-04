@@ -3,8 +3,7 @@
 import { HealthCheckResult } from '@/types/crawl';
 import {
     analyzeContrast,
-    calculateContrastScore,
-    generateContrastRecommendations
+    calculateContrastScore
 } from '@/lib/validators/contrast';
 
 export async function validateContrast(
@@ -39,7 +38,6 @@ export async function validateContrast(
 
         const errorCount = issues.filter(issue => issue.type === 'error').length;
         const warningCount = issues.filter(issue => issue.type === 'warning').length;
-        const totalIssues = errorCount + warningCount;
 
         const status = errorCount > 0 ? 'error' : warningCount > 0 ? 'warning' : 'success';
         const message = status === 'error'

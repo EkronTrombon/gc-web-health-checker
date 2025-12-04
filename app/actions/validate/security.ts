@@ -3,8 +3,7 @@
 import { HealthCheckResult } from '@/types/crawl';
 import {
     analyzeSecurity,
-    calculateSecurityScore,
-    generateSecurityRecommendations
+    calculateSecurityScore
 } from '@/lib/validators/security';
 
 export async function validateSecurity(url: string): Promise<HealthCheckResult> {
@@ -14,7 +13,6 @@ export async function validateSecurity(url: string): Promise<HealthCheckResult> 
 
         const highCount = issues.filter(i => i.severity === 'high').length;
         const mediumCount = issues.filter(i => i.severity === 'medium').length;
-        const lowCount = issues.filter(i => i.severity === 'low').length;
 
         const status = highCount > 0 ? 'error' : mediumCount > 0 ? 'warning' : 'success';
         const message = status === 'error'

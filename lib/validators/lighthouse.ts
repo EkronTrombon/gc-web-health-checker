@@ -86,6 +86,42 @@ export function generateLighthouseRecommendations(result: LighthouseResult): str
 
     if (result.seo < 90) {
         recommendations.push('Add meta descriptions to all pages');
+    }
+
+    return recommendations;
+}
+
+interface LighthouseAudit {
+    score?: number;
+    numericValue?: number;
+    displayValue?: string;
+}
+
+interface LighthouseAPIResult {
+    audits?: {
+        [key: string]: LighthouseAudit;
+    };
+}
+
+/**
+ * Extract metrics from Lighthouse result
+ */
+function extractMetrics(lighthouseResult: LighthouseAPIResult): { [key: string]: LighthouseMetric } | undefined {
+    if (!lighthouseResult?.audits) {
+        return undefined;
+    }
+
+    const metrics: { [key: string]: LighthouseMetric } = {};
+    const metricIds = [
+        'first-contentful-paint',
+        'largest-contentful-paint',
+        'total-blocking-time',
+        'cumulative-layout-shift',
+        'speed-index'
+    ];
+
+    for (const metricId of metricIds) {
+        const audit = lighthouseResult.audits[metricId];
         if (audit) {
             metrics[metricId] = {
                 score: audit.score || 0,

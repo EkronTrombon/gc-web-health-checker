@@ -3,8 +3,7 @@
 import { HealthCheckResult } from '@/types/crawl';
 import {
     analyzeAccessibility,
-    calculateAccessibilityScore,
-    generateAccessibilityRecommendations
+    calculateAccessibilityScore
 } from '@/lib/validators/accessibility';
 
 /**
@@ -52,7 +51,6 @@ export async function validateAccessibility(
         const criticalCount = issues.filter(issue => issue.severity === 'critical').length;
         const seriousCount = issues.filter(issue => issue.severity === 'serious').length;
         const moderateCount = issues.filter(issue => issue.severity === 'moderate').length;
-        const minorCount = issues.filter(issue => issue.severity === 'minor').length;
 
         // Determine status
         const status = criticalCount > 0 || seriousCount > 0 ? 'error' : moderateCount > 0 ? 'warning' : 'success';

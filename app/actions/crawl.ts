@@ -53,7 +53,7 @@ export async function crawlUrl(url: string): Promise<CrawlData> {
             statusCode: scrapeResult.metadata?.statusCode || 200,
             responseTime: scrapeResult.metadata?.responseTime || 0,
             screenshot: scrapeResult.screenshot || null,
-            links: (scrapeResult.links || []).map((link: any) =>
+            links: (scrapeResult.links || []).map((link: string | { text: string; href: string }) =>
                 typeof link === 'string' ? { text: '', href: link } : link
             ) as { text: string; href: string }[],
             metadata: scrapeResult.metadata || {}

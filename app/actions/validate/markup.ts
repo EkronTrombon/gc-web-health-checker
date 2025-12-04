@@ -3,8 +3,7 @@
 import { HealthCheckResult } from '@/types/crawl';
 import {
     validateMarkup,
-    calculateMarkupScore,
-    generateMarkupRecommendations
+    calculateMarkupScore
 } from '@/lib/validators/markup';
 
 /**
@@ -42,7 +41,6 @@ export async function validateHTMLMarkup(
 
         const errorCount = details.filter(d => d.type === 'error').length;
         const warningCount = details.filter(d => d.type === 'warning').length;
-        const totalIssues = errorCount + warningCount;
 
         const status = errorCount > 0 ? 'error' : warningCount > 0 ? 'warning' : 'success';
         const message = status === 'error'

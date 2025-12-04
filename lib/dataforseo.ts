@@ -8,23 +8,57 @@ interface DataForSEOCredentials {
   password: string;
 }
 
-interface OnPageTask {
-  url: string;
-  max_crawl_pages?: number;
-  enable_javascript?: boolean;
-  load_resources?: boolean;
-  enable_browser_rendering?: boolean;
+interface DataForSEOPageData {
+  onpage_score?: number;
+  checks?: {
+    no_title?: boolean;
+    no_description?: boolean;
+    no_h1?: boolean;
+    no_image_alt?: number;
+    duplicate_title?: boolean;
+    duplicate_description?: boolean;
+    no_canonical?: boolean;
+    no_viewport?: boolean;
+  };
+  meta?: {
+    title?: string;
+    description?: string;
+    canonical?: string;
+    viewport?: string;
+    htags?: {
+      h1?: string[];
+    };
+    images?: number;
+    internal_links_count?: number;
+    external_links_count?: number;
+    content?: {
+      plain_text_size?: number;
+      plain_text_word_count?: number;
+      text_to_html_ratio?: number;
+    };
+  };
+  broken?: {
+    images?: number;
+    links?: number;
+  };
+  page_timing?: {
+    time_to_interactive?: number;
+    dom_complete?: number;
+  };
+  total_transfer_size?: number;
+}
+
+interface DataForSEOTaskResult {
+  id: string;
+  status_code: number;
+  status_message: string;
+  result?: DataForSEOPageData[];
 }
 
 interface DataForSEOResponse {
   status_code: number;
   status_message: string;
-  tasks?: Array<{
-    id: string;
-    status_code: number;
-    status_message: string;
-    result?: any[];
-  }>;
+  tasks?: DataForSEOTaskResult[];
 }
 
 interface SEOMetrics {
@@ -87,7 +121,7 @@ function getCredentials(): DataForSEOCredentials {
  */
 async function makeDataForSEORequest(
   endpoint: string,
-  data?: any
+  data?: unknown
 ): Promise<DataForSEOResponse> {
   const credentials = getCredentials();
   const auth = Buffer.from(`${credentials.login}:${credentials.password}`).toString('base64');
@@ -149,8 +183,13 @@ export async function analyzePageSEO(url: string): Promise<SEOMetrics> {
  */
 export async function getOnPageScore(url: string): Promise<{
   score: number;
-  checks: any;
-  issues: any[];
+  checks: DataForSEOPageData['checks'];
+  issues: Array<{
+    type: string;
+    message: string;
+    element?: string;
+    priority?: 'high' | 'medium' | 'low';
+  }>;
 }> {
   try {
     const response = await makeDataForSEORequest('on_page/instant_pages', [
@@ -173,11 +212,11 @@ export async function getOnPageScore(url: string): Promise<{
     }
 
     // Extract checks and calculate score
-    const checks = pageData.onpage_score || pageData.checks || {};
+    const checks = pageData.checks || {};
     const issues = extractIssuesFromChecks(pageData);
 
     // Calculate score (DataForSEO might provide on_page_score)
-    const score = pageData.onpage_score || calculateScoreFromChecks(checks);
+    const score = pageData.onpage_score || calculateScoreFromChecks(pageData.checks);
 
     return {
       score,
@@ -194,13 +233,13 @@ export async function getOnPageScore(url: string): Promise<{
 /**
  * Extract SEO metrics from DataForSEO response
  */
-function extractSEOMetrics(pageData: any): SEOMetrics {
+function extractSEOMetrics(pageData: DataForSEOPageData): SEOMetrics {
   const metrics: SEOMetrics = {
     onPageScore: pageData.onpage_score,
     checks: {
       meta: {
-        title: pageData.meta?.title,
-        description: pageData.meta?.description,
+        title: pageData.meta?.title ? { length: pageData.meta.title.length, content: pageData.meta.title } : undefined,
+        description: pageData.meta?.description ? { length: pageData.meta.description.length, content: pageData.meta.description } : undefined,
         canonical: pageData.meta?.canonical,
         h1: pageData.meta?.htags?.h1 || [],
         viewport: pageData.meta?.viewport,
@@ -237,7 +276,7 @@ function extractSEOMetrics(pageData: any): SEOMetrics {
 /**
  * Extract SEO issues from DataForSEO checks
  */
-function extractIssuesFromChecks(pageData: any): Array<{
+function extractIssuesFromChecks(pageData: DataForSEOPageData): Array<{
   type: string;
   message: string;
   element?: string;
@@ -347,7 +386,7 @@ function extractIssuesFromChecks(pageData: any): Array<{
   }
 
   // Broken links
-  if (pageData.broken?.links > 0) {
+  if (pageData.broken?.links && pageData.broken.links > 0) {
     issues.push({
       type: 'error',
       message: `${pageData.broken.links} broken links found`,
@@ -361,9 +400,13 @@ function extractIssuesFromChecks(pageData: any): Array<{
 /**
  * Calculate SEO score from checks (0-100)
  */
-function calculateScoreFromChecks(checks: any): number {
+function calculateScoreFromChecks(checks: DataForSEOPageData['checks']): number {
   let score = 100;
   let deductions = 0;
+
+  if (!checks) {
+    return score;
+  }
 
   // Count various issues and deduct points
   if (checks.no_title) deductions += 20;
@@ -389,7 +432,7 @@ export function isDataForSEOConfigured(): boolean {
 /**
  * Get DataForSEO API usage statistics
  */
-export async function getAPIUsage(): Promise<any> {
+export async function getAPIUsage(): Promise<DataForSEOResponse | null> {
   try {
     const response = await makeDataForSEORequest('appendix/user_data');
     return response;
