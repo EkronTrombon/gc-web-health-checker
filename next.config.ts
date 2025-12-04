@@ -2,8 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   eslint: {
-    // Temporarily ignore ESLint errors during builds
-    ignoreDuringBuilds: true,
+    // Temporarily ignore ESLint errors during  eslint: {
+    ignoreDuringBuilds: false,
   },
 };
 

@@ -40,23 +40,37 @@ export async function validateContrast(
         const errorCount = issues.filter(issue => issue.type === 'error').length;
         const warningCount = issues.filter(issue => issue.type === 'warning').length;
         const totalIssues = errorCount + warningCount;
-        timestamp: Date.now(),
+
+        const status = errorCount > 0 ? 'error' : warningCount > 0 ? 'warning' : 'success';
+        const message = status === 'error'
+            ? `Found ${errorCount} contrast errors.`
+            : status === 'warning'
+                ? `Found ${warningCount} contrast warnings.`
+                : 'Contrast is good.';
+
+        return {
+            id: 'contrast',
+            label: 'Contrast Checker',
+            status,
+            score,
+            message,
+            timestamp: Date.now(),
             details: issues.slice(0, 15).map(issue => ({
                 type: issue.type as 'error' | 'warning' | 'info',
                 message: issue.message
             })),
-                reportId: `contrast-${Date.now()}`
-    };
+            reportId: `contrast-${Date.now()}`
+        };
 
-} catch (error) {
-    console.error('Contrast validation error:', error);
+    } catch (error) {
+        console.error('Contrast validation error:', error);
 
-    return {
-        id: 'contrast',
-        label: 'Contrast Checker',
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Unknown error occurred',
-        timestamp: Date.now()
-    };
-}
+        return {
+            id: 'contrast',
+            label: 'Contrast Checker',
+            status: 'error',
+            message: error instanceof Error ? error.message : 'Unknown error occurred',
+            timestamp: Date.now()
+        };
+    }
 }

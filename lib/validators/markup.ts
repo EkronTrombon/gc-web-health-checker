@@ -5,24 +5,34 @@ export interface ValidationError {
     column?: number;
 }
 
+/**
+ * Validate HTML markup using W3C Validator API
+ */
+export async function validateMarkup(html: string): Promise<ValidationError[]> {
+    try {
+        const validatorResponse = await fetch('https://validator.w3.org/nu/?out=json', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/html; charset=utf-8',
+                'User-Agent': 'Mozilla/5.0 (compatible; HealthChecker/1.0)'
             },
-body: html,
+            body: html,
         });
 
-if (validatorResponse.ok) {
-    const validatorText = await validatorResponse.text();
-    const w3cResults = parseW3CResponse(validatorText);
+        if (validatorResponse.ok) {
+            const validatorText = await validatorResponse.text();
+            const w3cResults = parseW3CResponse(validatorText);
 
-    if (w3cResults.length > 0) {
-        return w3cResults;
-    }
-}
+            if (w3cResults.length > 0) {
+                return w3cResults;
+            }
+        }
     } catch (error) {
-    console.warn('W3C validator unavailable, using basic validation:', error);
-}
+        console.warn('W3C validator unavailable, using basic validation:', error);
+    }
 
-// Fallback to basic HTML validation
-return validateHTMLBasic(html);
+    // Fallback to basic HTML validation
+    return validateHTMLBasic(html);
 }
 
 /**

@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(timeout 5 bash -c 'while true; do sleep 1; done')",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

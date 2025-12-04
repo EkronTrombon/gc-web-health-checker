@@ -58,25 +58,36 @@ export async function validateAccessibility(
         const status = criticalCount > 0 || seriousCount > 0 ? 'error' : moderateCount > 0 ? 'warning' : 'success';
 
         // Generate message
-        timestamp: Date.now(),
+        const message = status === 'error'
+            ? `Found ${criticalCount} critical and ${seriousCount} serious accessibility issues.`
+            : status === 'warning'
+                ? `Found ${moderateCount} moderate accessibility issues.`
+                : 'No significant accessibility issues found.';
+        return {
+            id: 'accessibility',
+            label: 'Accessibility Check',
+            status,
+            score,
+            message,
+            timestamp: Date.now(),
             details: issues.slice(0, 20).map(issue => ({
                 type: issue.type as 'error' | 'warning' | 'info',
                 message: `${issue.message}${issue.wcagGuideline ? ` (${issue.wcagGuideline})` : ''}`
             })),
-                reportId: `accessibility-${Date.now()}`
-    };
+            reportId: `accessibility-${Date.now()}`
+        };
 
-    return result;
 
-} catch (error) {
-    console.error('Accessibility validation error:', error);
 
-    return {
-        id: 'accessibility',
-        label: 'Accessibility Check',
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Unknown error occurred',
-        timestamp: Date.now()
-    };
-}
+    } catch (error) {
+        console.error('Accessibility validation error:', error);
+
+        return {
+            id: 'accessibility',
+            label: 'Accessibility Check',
+            status: 'error',
+            message: error instanceof Error ? error.message : 'Unknown error occurred',
+            timestamp: Date.now()
+        };
+    }
 }

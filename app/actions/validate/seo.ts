@@ -44,24 +44,37 @@ export async function validateSEO(
         const mediumPriorityCount = issues.filter(issue => issue.priority === 'medium').length;
         const lowPriorityCount = issues.filter(issue => issue.priority === 'low').length;
 
-        timestamp: Date.now(),
+        const status = highPriorityCount > 0 ? 'error' : mediumPriorityCount > 0 ? 'warning' : 'success';
+        const message = status === 'error'
+            ? `Found ${highPriorityCount} high priority SEO issues.`
+            : status === 'warning'
+                ? `Found ${mediumPriorityCount} medium priority SEO issues.`
+                : 'SEO is well-optimized.';
+
+        return {
+            id: 'seo',
+            label: 'SEO Analysis',
+            status,
+            score,
+            message,
+            timestamp: Date.now(),
             details: issues.slice(0, 15).map(issue => ({
                 type: issue.type as 'error' | 'warning' | 'info',
                 message: issue.message
             })),
-                reportId: `seo-${Date.now()}`,
-                    dataSource: 'Local Analysis'
-    };
+            reportId: `seo-${Date.now()}`,
+            dataSource: 'Local Analysis'
+        };
 
-} catch (error) {
-    console.error('SEO validation error:', error);
+    } catch (error) {
+        console.error('SEO validation error:', error);
 
-    return {
-        id: 'seo',
-        label: 'SEO Analysis',
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Unknown error occurred',
-        timestamp: Date.now()
-    };
-}
+        return {
+            id: 'seo',
+            label: 'SEO Analysis',
+            status: 'error',
+            message: error instanceof Error ? error.message : 'Unknown error occurred',
+            timestamp: Date.now()
+        };
+    }
 }

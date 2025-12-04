@@ -13,6 +13,25 @@ const iconMap = {
   Globe,
   Shield,
   Eye,
+  Zap,
+  CheckCircle,
+  Search
+};
+
+interface CheckGridProps {
+  checks: Array<{ 
+    id: string; 
+    label: string; 
+    description: string; 
+    icon: string;
+    color: string;
+  }>;
+  isValidUrl: boolean;
+  isLoading: boolean;
+  onCheckClick: (id: string) => void;
+}
+
+export function CheckGrid({ checks, isValidUrl, isLoading, onCheckClick }: CheckGridProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {checks.map((check) => {
