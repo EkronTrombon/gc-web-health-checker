@@ -7,6 +7,41 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
 
+/**
+ * Generate external report URL for supported validators
+ */
+function getExternalReportUrl(reportId: string, url: string): string | null {
+  if (!url) return null;
+
+  const encodedUrl = encodeURIComponent(url);
+  const reportType = reportId.split('-')[0]; // Extract type from "type-timestamp" format
+
+  switch (reportType) {
+    case 'lighthouse':
+      return `https://pagespeed.web.dev/analysis?url=${encodedUrl}`;
+    case 'markup':
+      return `https://validator.w3.org/nu/?doc=${encodedUrl}`;
+    default:
+      return null; // Other validators don't have external links
+  }
+}
+
+/**
+ * Get display label for external report link
+ */
+function getExternalReportLabel(reportId: string): string {
+  const reportType = reportId.split('-')[0];
+
+  switch (reportType) {
+    case 'lighthouse':
+      return 'View on PageSpeed Insights';
+    case 'markup':
+      return 'Validate on W3C';
+    default:
+      return 'View External Report';
+  }
+}
+
 interface ReportDetail {
   type: string;
   message: string;
@@ -25,6 +60,7 @@ interface ReportData {
   message: string;
   details?: ReportDetail[];
   recommendations?: string[];
+  dataSource?: string;
 }
 
 // This would typically fetch from a database or cache
@@ -306,6 +342,34 @@ export default function ReportPage() {
               Visit Site <ExternalLink className="ml-1 h-4 w-4" />
             </a>
           </div>
+
+          {/* External Report Links Section */}
+          {report.id && report.url && getExternalReportUrl(report.id, report.url) && (
+            <Card className="p-4 bg-muted/30 border-dashed">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-muted-foreground">
+                    External Validation Tool
+                  </span>
+                </div>
+                <a
+                  href={getExternalReportUrl(report.id, report.url)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-sm text-primary hover:underline font-medium"
+                >
+                  {getExternalReportLabel(report.id)}
+                  <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+                </a>
+              </div>
+              {report.id.startsWith('lighthouse') && report.dataSource === 'Simulated' && (
+                <p className="text-xs text-muted-foreground mt-2 ml-6">
+                  Note: Internal results are simulated. Use external tool for live analysis.
+                </p>
+              )}
+            </Card>
+          )}
 
           {/* Overview Card */}
           <Card className={`p-6 border-2 ${getStatusColor(report.status)}`}>
