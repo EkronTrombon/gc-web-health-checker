@@ -7,7 +7,6 @@ export default function MainHeader() {
         <header className="bg-card text-foreground border-b border-border shadow-sm">
             <div className="container mx-auto px-4 py-6 flex justify-between items-center">
                 <Image src={Logo} width={200} height={200} alt="GC Logo" />
-                <h1 className="text-4xl font-bold text-foreground">Goldencomm Web Health Checker</h1>
                 <ThemeToggle />
             </div>
         </header>
