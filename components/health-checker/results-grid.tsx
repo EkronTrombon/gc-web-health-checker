@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
-import Link from "next/link";
 import { HealthCheckResult } from "@/types/crawl";
 
 interface ResultsGridProps {
@@ -22,6 +21,16 @@ function getExternalReportUrl(checkId: string, url: string): string | null {
       return `https://pagespeed.web.dev/analysis?url=${encodedUrl}`;
     case 'markup':
       return `https://validator.w3.org/nu/?doc=${encodedUrl}`;
+    case 'accessibility':
+      return `https://pagespeed.web.dev/analysis?url=${encodedUrl}`;
+    case 'contrast':
+      return `https://wave.webaim.org/report#/${encodedUrl}`;
+    case 'security':
+      // Extract domain from URL (remove protocol and path)
+      const domain = url.replace(/^https?:\/\//, '').split('/')[0];
+      return `https://observatory.mozilla.org/analyze/${domain}`;
+    case 'seo':
+      return `https://pagespeed.web.dev/analysis?url=${encodedUrl}`;
     default:
       return null;
   }
@@ -36,6 +45,14 @@ function getExternalReportLabel(checkId: string): string {
       return 'View on PageSpeed Insights';
     case 'markup':
       return 'Validate on W3C';
+    case 'accessibility':
+      return 'View on PageSpeed Insights';
+    case 'contrast':
+      return 'Analyze with WAVE';
+    case 'security':
+      return 'Check with Mozilla Observatory';
+    case 'seo':
+      return 'View on PageSpeed Insights';
     default:
       return 'View External Report';
   }
@@ -120,7 +137,7 @@ export function ResultsGrid({ results }: ResultsGridProps) {
                   </span>
                 )}
 
-                <div className="pt-4 mt-auto space-y-2">
+                <div className="pt-4 mt-auto">
                   {externalUrl && (
                     <a
                       href={externalUrl}
@@ -133,15 +150,6 @@ export function ResultsGrid({ results }: ResultsGridProps) {
                         <ExternalLink className="h-3 w-3 ml-2 transition-transform duration-300 group-hover:translate-x-1" />
                       </Button>
                     </a>
-                  )}
-
-                  {result.reportId && (
-                    <Link href={`/report/${result.reportId}`} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" className="w-full group hover:border-foreground/20 hover:bg-accent hover:shadow-md hover:scale-[1.02] transition-all duration-300">
-                        View Full Report
-                        <ExternalLink className="h-3 w-3 ml-2 transition-transform duration-300 group-hover:translate-x-1" />
-                      </Button>
-                    </Link>
                   )}
                 </div>
               </div>
