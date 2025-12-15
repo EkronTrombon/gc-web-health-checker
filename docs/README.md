@@ -83,6 +83,38 @@ Topics covered:
 
 ---
 
+### [API Reference](./API_REFERENCE.md)
+**Complete reference for all validators and server actions**
+
+Topics covered:
+- Server actions API
+- Validator functions
+- Type definitions
+- External integrations (Axe-core, DataForSEO)
+- Usage examples
+- Best practices
+
+**Best for:** Developers integrating validators or building features
+
+---
+
+### [Testing Guide](./TESTING.md)
+**Comprehensive testing documentation**
+
+Topics covered:
+- Setting up Jest
+- Running tests
+- Writing validator tests
+- Testing server actions
+- Component testing
+- CI/CD integration
+- Coverage goals
+- Best practices
+
+**Best for:** Contributors and quality assurance
+
+---
+
 ## 🎯 Quick Links by Role
 
 ### For New Users
@@ -102,6 +134,8 @@ Topics covered:
 ### For Contributors
 1. [Development Guide](./development.md)
 2. [Architecture Overview](./architecture.md)
+3. [Testing Guide](./TESTING.md)
+4. [API Reference](./API_REFERENCE.md)
 
 ---
 
@@ -118,6 +152,9 @@ Topics covered:
 | Understand data flow | [Architecture](./architecture.md#data-flow) |
 | Debug issues | [Development Guide](./development.md#debugging) |
 | Set up Docker | [Deployment Guide](./deployment.md#using-docker) |
+| Write tests | [Testing Guide](./TESTING.md#writing-tests) |
+| API reference | [API Reference](./API_REFERENCE.md) |
+| Check known issues | [Known Issues](../KNOWN_ISSUES.md) |
 
 ---
 
@@ -137,6 +174,8 @@ Topics covered:
 
 ### Project Files
 - [README.md](../README.md) - Project overview
+- [CLAUDE.md](../CLAUDE.md) - Claude Code instructions
+- [KNOWN_ISSUES.md](../KNOWN_ISSUES.md) - Known bugs and technical debt
 - [DATAFORSEO_SETUP.md](../DATAFORSEO_SETUP.md) - Detailed DataForSEO setup
 
 ---
@@ -169,13 +208,28 @@ This documentation is maintained alongside the codebase. When making changes:
 
 ## 🗺️ Documentation Roadmap
 
+Completed:
+- [x] Testing guide with examples
+- [x] API reference documentation
+- [x] Known issues documentation
+
 Planned additions:
-- [ ] Testing guide with examples
-- [ ] Contributing guidelines
-- [ ] API reference documentation
+- [ ] Contributing guidelines (CONTRIBUTING.md)
 - [ ] Troubleshooting FAQ
 - [ ] Video tutorials
 - [ ] Performance optimization guide
+- [ ] Migration guide from API routes to server actions
+
+---
+
+## 📚 Recently Added Documentation
+
+**December 2025:**
+- ✅ [API Reference](./API_REFERENCE.md) - Complete validator and server action reference
+- ✅ [Testing Guide](./TESTING.md) - Comprehensive testing documentation
+- ✅ [Known Issues](../KNOWN_ISSUES.md) - Current bugs and technical debt
+- ✅ Updated [Architecture Guide](./architecture.md) - Server actions architecture
+- ✅ Updated [Development Guide](./development.md) - Server actions patterns
 
 ---
 

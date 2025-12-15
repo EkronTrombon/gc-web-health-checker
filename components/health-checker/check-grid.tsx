@@ -39,23 +39,23 @@ export function CheckGrid({ checks, isValidUrl, isLoading, onCheckClick }: Check
         return (
           <button
             key={check.id}
-            className={`group relative p-6 rounded-xl text-left transition-all duration-300 hover:-translate-y-1 ${
-              isValidUrl && !isLoading 
-                ? "hover:shadow-xl cursor-pointer bg-white/50 dark:bg-black/20 hover:bg-white/80 dark:hover:bg-black/40 border border-transparent hover:border-primary/20" 
-                : "opacity-50 cursor-not-allowed bg-muted/20 border border-border/50"
+            className={`group relative p-6 rounded-lg text-left transition-all duration-300 hover:-translate-y-1 ${
+              isValidUrl && !isLoading
+                ? "hover:shadow-xl hover:scale-[1.02] cursor-pointer bg-card hover:bg-accent border border-border hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                : "opacity-50 cursor-not-allowed bg-muted/50 border border-border"
             }`}
             disabled={!isValidUrl || isLoading}
             onClick={() => onCheckClick(check.id)}
           >
             <div className="flex items-start space-x-4">
-              <div className={`p-3 rounded-lg bg-gradient-to-br ${check.color.replace('text-', 'from-').replace('500', '100')} to-transparent dark:from-white/10`}>
-                <IconComponent className={`h-6 w-6 ${check.color}`} />
+              <div className="p-3 rounded-lg bg-muted group-hover:bg-muted/70 transition-all duration-300">
+                <IconComponent className="h-6 w-6 text-foreground transition-transform duration-300 group-hover:scale-110" />
               </div>
               <div className="space-y-1">
-                <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                <h3 className="font-semibold text-foreground transition-colors duration-300">
                   {check.label}
                 </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors duration-300 leading-relaxed">
                   {check.description}
                 </p>
               </div>

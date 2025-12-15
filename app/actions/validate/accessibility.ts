@@ -5,6 +5,39 @@ import {
     analyzeAccessibility,
     calculateAccessibilityScore
 } from '@/lib/validators/accessibility';
+import {
+    runAxeAnalysis,
+    isAxeAvailable
+} from '@/lib/axe';
+
+/**
+ * Helper function to fetch HTML content for validation
+ */
+async function getHtmlContent(url: string, providedHtml?: string): Promise<string> {
+    if (providedHtml) {
+        return providedHtml;
+    }
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const crawlResponse = await fetch(`${baseUrl}/api/crawl`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+    });
+
+    if (!crawlResponse.ok) {
+        throw new Error('Failed to crawl URL for validation');
+    }
+
+    const crawlData = await crawlResponse.json();
+    const htmlContent = crawlData.data?.html;
+
+    if (!htmlContent) {
+        throw new Error('No HTML content found to validate');
+    }
+
+    return htmlContent;
+}
 
 /**
  * Server action to validate accessibility of a webpage
@@ -17,35 +50,46 @@ export async function validateAccessibility(
     html?: string
 ): Promise<HealthCheckResult> {
     try {
-        // Get HTML if not provided
-        let htmlContent = html;
+        // Check if Axe is available
+        const useAxe = isAxeAvailable();
 
-        if (!htmlContent) {
-            // Crawl the URL to get HTML
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-            const crawlResponse = await fetch(`${baseUrl}/api/crawl`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url }),
-            });
+        let score: number;
+        let issues: Array<{ type: string; message: string; severity?: 'critical' | 'serious' | 'moderate' | 'minor'; impact?: string; wcagGuideline?: string }>;
+        let dataSource: string;
 
-            if (!crawlResponse.ok) {
-                throw new Error('Failed to crawl URL for validation');
+        if (useAxe) {
+            // Use Axe for professional accessibility analysis
+            console.log('[Accessibility Validator] Using Axe for accessibility analysis');
+
+            try {
+                const htmlContent = await getHtmlContent(url, html);
+                const axeResult = await runAxeAnalysis(htmlContent, url);
+                score = axeResult.score;
+                issues = axeResult.issues.map(issue => ({
+                    type: issue.type,
+                    message: issue.message,
+                    severity: (issue.impact || 'moderate') as 'critical' | 'serious' | 'moderate' | 'minor',
+                    impact: issue.impact,
+                    wcagGuideline: issue.wcagTags?.join(', ')
+                }));
+                dataSource = 'Axe DevTools';
+                console.log(`[Accessibility Validator] Axe returned score: ${score}, issues: ${issues.length}`);
+            } catch (axeError) {
+                console.warn('[Accessibility Validator] Axe analysis failed, falling back to local analysis:', axeError);
+                // Fallback to local analysis
+                const htmlContent = await getHtmlContent(url, html);
+                issues = await analyzeAccessibility(htmlContent);
+                score = calculateAccessibilityScore(issues);
+                dataSource = 'Local Analysis (Axe Fallback)';
             }
-
-            const crawlData = await crawlResponse.json();
-            htmlContent = crawlData.data?.html;
-
-            if (!htmlContent) {
-                throw new Error('No HTML content found to validate');
-            }
+        } else {
+            // Use local analysis
+            console.log('[Accessibility Validator] Axe not available, using local analysis');
+            const htmlContent = await getHtmlContent(url, html);
+            issues = await analyzeAccessibility(htmlContent);
+            score = calculateAccessibilityScore(issues);
+            dataSource = 'Local Analysis';
         }
-
-        // Perform accessibility analysis
-        const issues = await analyzeAccessibility(htmlContent);
-
-        // Calculate score
-        const score = calculateAccessibilityScore(issues);
 
         // Count issues by severity
         const criticalCount = issues.filter(issue => issue.severity === 'critical').length;
@@ -72,7 +116,9 @@ export async function validateAccessibility(
                 type: issue.type as 'error' | 'warning' | 'info',
                 message: `${issue.message}${issue.wcagGuideline ? ` (${issue.wcagGuideline})` : ''}`
             })),
-            reportId: `accessibility-${Date.now()}`
+            reportId: `accessibility-${Date.now()}`,
+            dataSource,
+            url
         };
 
 

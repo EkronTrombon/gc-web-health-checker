@@ -16,7 +16,7 @@ export function UrlInput({ url, isValidUrl, onUrlChange }: UrlInputProps) {
         Enter Website URL
       </label>
       <div className="relative group">
-        <div className={`absolute -inset-0.5 bg-gradient-to-r from-primary to-purple-600 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200 ${isValidUrl ? 'opacity-50' : ''}`}></div>
+        <div className={`absolute -inset-0.5 bg-gradient-to-r from-foreground/10 to-foreground/5 rounded-lg blur-sm opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-500 ${isValidUrl ? 'opacity-100' : ''}`}></div>
         <div className="relative flex items-center">
           <Input
             id="url-input"
@@ -24,7 +24,7 @@ export function UrlInput({ url, isValidUrl, onUrlChange }: UrlInputProps) {
             placeholder="https://example.com"
             value={url}
             onChange={(e) => onUrlChange(e.target.value)}
-            className="h-14 px-6 text-lg bg-background/80 backdrop-blur-sm border-0 ring-offset-0 focus-visible:ring-0 shadow-sm rounded-lg pr-12"
+            className="h-14 px-6 text-lg bg-background border border-input hover:border-foreground/20 focus-visible:border-ring backdrop-blur-sm shadow-sm rounded-lg pr-12 transition-all duration-300"
           />
           <div className="absolute right-4">
             {url && (

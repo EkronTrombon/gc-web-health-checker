@@ -38,4 +38,5 @@ export interface HealthCheckResult {
   timestamp: number;
   reportId?: string;
   dataSource?: string;
+  url?: string;
 }

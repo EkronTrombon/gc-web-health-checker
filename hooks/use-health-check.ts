@@ -72,7 +72,9 @@ export function useHealthCheck() {
                 validationResult = { success: true, data: validationResult };
             } else if (checkType === 'lighthouse') {
                 const { validateLighthouse } = await import('@/app/actions/validate/lighthouse');
+                console.log(`[useHealthCheck] Calling validateLighthouse for ${data.url}`);
                 validationResult = await validateLighthouse(data.url);
+                console.log('[useHealthCheck] Received validationResult:', validationResult);
                 validationResult = { success: true, data: validationResult };
             } else {
                 throw new Error(`Unknown check type: ${checkType}`);
@@ -84,6 +86,12 @@ export function useHealthCheck() {
 
             const reportData = validationResult.data;
 
+            console.log('[useHealthCheck] reportData extracted:', {
+                score: reportData.score,
+                status: reportData.status,
+                message: reportData.message
+            });
+
             const result: HealthCheckResult = {
                 id: checkType,
                 label: reportData.label || enabledHealthChecks.find(c => c.id === checkType)?.label || checkType,
@@ -91,8 +99,16 @@ export function useHealthCheck() {
                 message: reportData.message,
                 timestamp: reportData.timestamp,
                 reportId: reportData.id,
-                score: reportData.score
+                score: reportData.score,
+                url: data.url
             };
+
+            console.log('[useHealthCheck] Final result object:', {
+                id: result.id,
+                score: result.score,
+                status: result.status,
+                message: result.message
+            });
 
             setHealthResults(prev => [...prev.filter(r => r.id !== checkType), result]);
 
@@ -150,7 +166,8 @@ export function useHealthCheck() {
                 status: "error",
                 message: error instanceof Error ? error.message : "An unknown error occurred",
                 timestamp: Date.now(),
-                reportId: `${checkType}-${Date.now()}-error`
+                reportId: `${checkType}-${Date.now()}-error`,
+                url: data.url
             };
 
             setHealthResults(prev => [...prev.filter(r => r.id !== checkType), result]);
@@ -182,7 +199,8 @@ export function useHealthCheck() {
                 label: enabledHealthChecks.find(c => c.id === checkType)?.label || checkType,
                 status: "error",
                 message: error instanceof Error ? error.message : "An unknown error occurred",
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                url: url
             };
             setHealthResults(prev => [...prev.filter(r => r.id !== checkType), errorResult]);
         } finally {

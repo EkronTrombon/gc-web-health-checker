@@ -16,13 +16,15 @@ export interface LighthouseResult {
 
 /**
  * Run Lighthouse analysis using Google PageSpeed Insights API
+ * @param url - URL to analyze
+ * @param strategy - 'mobile' or 'desktop' (defaults to 'desktop')
  */
-export async function runLighthouse(url: string): Promise<LighthouseResult> {
+export async function runLighthouse(url: string, strategy: 'mobile' | 'desktop' = 'desktop'): Promise<LighthouseResult> {
     const apiKey = process.env.GOOGLE_PAGESPEED_API_KEY;
 
     // Return simulated scores if no API key
     if (!apiKey) {
-        console.warn('Google PageSpeed API key not configured, using simulated scores');
+        console.warn('[Lighthouse] Google PageSpeed API key not configured, using simulated scores');
         return {
             performance: 85,
             accessibility: 90,
@@ -32,25 +34,52 @@ export async function runLighthouse(url: string): Promise<LighthouseResult> {
     }
 
     try {
-        const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&key=${apiKey}&category=performance&category=accessibility&category=best-practices&category=seo`;
+        // Add strategy parameter - now defaults to desktop
+        const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&key=${apiKey}&strategy=${strategy}&category=performance&category=accessibility&category=best-practices&category=seo`;
+
+        console.log(`[Lighthouse] Making API request for ${url} with strategy: ${strategy}`);
 
         const response = await fetch(apiUrl);
 
         if (!response.ok) {
-            throw new Error('PageSpeed API request failed');
+            const errorData = await response.json().catch(() => ({}));
+            const errorMsg = `PageSpeed API request failed: ${errorData.error?.message || response.statusText}`;
+            console.error(`[Lighthouse] ${errorMsg}`);
+            throw new Error(errorMsg);
         }
 
         const data = await response.json();
 
-        return {
-            performance: Math.round((data.lighthouseResult?.categories?.performance?.score || 0) * 100),
-            accessibility: Math.round((data.lighthouseResult?.categories?.accessibility?.score || 0) * 100),
-            bestPractices: Math.round((data.lighthouseResult?.categories?.['best-practices']?.score || 0) * 100),
-            seo: Math.round((data.lighthouseResult?.categories?.seo?.score || 0) * 100),
+        // Extract raw scores from API response
+        const rawPerformance = data.lighthouseResult?.categories?.performance?.score;
+        const rawAccessibility = data.lighthouseResult?.categories?.accessibility?.score;
+        const rawBestPractices = data.lighthouseResult?.categories?.['best-practices']?.score;
+        const rawSeo = data.lighthouseResult?.categories?.seo?.score;
+
+        // Log raw API scores (0-1 range)
+        console.log('[Lighthouse] Raw API scores:', {
+            performance: rawPerformance,
+            accessibility: rawAccessibility,
+            bestPractices: rawBestPractices,
+            seo: rawSeo
+        });
+
+        // Convert to 0-100 scale
+        const result = {
+            performance: Math.round((rawPerformance || 0) * 100),
+            accessibility: Math.round((rawAccessibility || 0) * 100),
+            bestPractices: Math.round((rawBestPractices || 0) * 100),
+            seo: Math.round((rawSeo || 0) * 100),
             metrics: extractMetrics(data.lighthouseResult)
         };
+
+        // Log converted scores (0-100 range)
+        console.log('[Lighthouse] Converted scores (0-100):', result);
+
+        return result;
     } catch (error) {
-        console.error('Lighthouse analysis error:', error);
+        console.error('[Lighthouse] Analysis error:', error);
+        console.warn('[Lighthouse] Returning simulated fallback scores');
         // Return simulated scores on error
         return {
             performance: 85,

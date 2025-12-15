@@ -5,6 +5,39 @@ import {
     analyzeSEO,
     calculateSEOScore
 } from '@/lib/validators/seo';
+import {
+    getOnPageScore,
+    isDataForSEOConfigured
+} from '@/lib/dataforseo';
+
+/**
+ * Helper function to fetch HTML content for validation
+ */
+async function getHtmlContent(url: string, providedHtml?: string): Promise<string> {
+    if (providedHtml) {
+        return providedHtml;
+    }
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const crawlResponse = await fetch(`${baseUrl}/api/crawl`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+    });
+
+    if (!crawlResponse.ok) {
+        throw new Error('Failed to crawl URL for validation');
+    }
+
+    const crawlData = await crawlResponse.json();
+    const htmlContent = crawlData.data?.html;
+
+    if (!htmlContent) {
+        throw new Error('No HTML content found to validate');
+    }
+
+    return htmlContent;
+}
 
 /**
  * Server action to validate SEO of a webpage
@@ -14,30 +47,39 @@ export async function validateSEO(
     html?: string
 ): Promise<HealthCheckResult> {
     try {
-        let htmlContent = html;
+        // Check if DataForSEO is configured
+        const useDataForSEO = isDataForSEOConfigured();
 
-        if (!htmlContent) {
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-            const crawlResponse = await fetch(`${baseUrl}/api/crawl`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url }),
-            });
+        let score: number;
+        let issues: Array<{ type: string; message: string; element?: string; priority?: 'high' | 'medium' | 'low' }>;
+        let dataSource: string;
 
-            if (!crawlResponse.ok) {
-                throw new Error('Failed to crawl URL for validation');
+        if (useDataForSEO) {
+            // Use DataForSEO API for professional analysis
+            console.log('[SEO Validator] Using DataForSEO API for analysis');
+
+            try {
+                const dataForSEOResult = await getOnPageScore(url);
+                score = dataForSEOResult.score;
+                issues = dataForSEOResult.issues;
+                dataSource = 'DataForSEO API';
+                console.log(`[SEO Validator] DataForSEO returned score: ${score}`);
+            } catch (apiError) {
+                console.warn('[SEO Validator] DataForSEO API failed, falling back to local analysis:', apiError);
+                // Fallback to local analysis
+                const htmlContent = await getHtmlContent(url, html);
+                issues = await analyzeSEO(htmlContent);
+                score = calculateSEOScore(issues);
+                dataSource = 'Local Analysis (API Fallback)';
             }
-
-            const crawlData = await crawlResponse.json();
-            htmlContent = crawlData.data?.html;
-
-            if (!htmlContent) {
-                throw new Error('No HTML content found to validate');
-            }
+        } else {
+            // Use local JSDOM analysis
+            console.log('[SEO Validator] DataForSEO not configured, using local analysis');
+            const htmlContent = await getHtmlContent(url, html);
+            issues = await analyzeSEO(htmlContent);
+            score = calculateSEOScore(issues);
+            dataSource = 'Local Analysis';
         }
-
-        const issues = await analyzeSEO(htmlContent);
-        const score = calculateSEOScore(issues);
 
         const highPriorityCount = issues.filter(issue => issue.priority === 'high').length;
         const mediumPriorityCount = issues.filter(issue => issue.priority === 'medium').length;
@@ -61,7 +103,8 @@ export async function validateSEO(
                 message: issue.message
             })),
             reportId: `seo-${Date.now()}`,
-            dataSource: 'Local Analysis'
+            dataSource,
+            url
         };
 
     } catch (error) {

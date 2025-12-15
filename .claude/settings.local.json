@@ -6,7 +6,13 @@
       "Bash(npm run dev:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npx shadcn@latest add --help)",
+      "Bash(npm install:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm test)",
+      "Bash(npm run:*)"
     ],
     "deny": [],
     "ask": []

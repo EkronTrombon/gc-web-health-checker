@@ -59,121 +59,233 @@ npm run dev
 
 ### Adding a New Health Check
 
+⚠️ **Important**: This app uses **server actions**, not API routes. Follow this pattern:
+
 To add a new health check (e.g., "Performance Budget"):
 
-#### 1. Update Configuration
+#### 1. Create Validator Logic
+
+Create `lib/validators/performance-budget.ts`:
+
+```typescript
+import { JSDOM } from 'jsdom';
+
+export interface PerformanceBudgetIssue {
+  type: 'error' | 'warning' | 'info';
+  message: string;
+  size?: number;
+  limit?: number;
+}
+
+/**
+ * Analyze performance budget compliance
+ */
+export async function analyzePerformanceBudget(
+  html: string,
+  url: string
+): Promise<PerformanceBudgetIssue[]> {
+  const issues: PerformanceBudgetIssue[] = [];
+  const dom = new JSDOM(html);
+  const document = dom.window.document;
+
+  // Example: Check script sizes
+  const scripts = document.querySelectorAll('script[src]');
+  scripts.forEach((script) => {
+    const src = script.getAttribute('src');
+    // Your analysis logic here
+    issues.push({
+      type: 'warning',
+      message: `Large script detected: ${src}`,
+      size: 150, // KB
+      limit: 100
+    });
+  });
+
+  return issues;
+}
+
+/**
+ * Calculate score based on issues
+ */
+export function calculatePerformanceBudgetScore(
+  issues: PerformanceBudgetIssue[]
+): number {
+  const errorCount = issues.filter(i => i.type === 'error').length;
+  const warningCount = issues.filter(i => i.type === 'warning').length;
+
+  return Math.max(0, Math.min(100,
+    100 - (errorCount * 15) - (warningCount * 5)
+  ));
+}
+
+/**
+ * Generate actionable recommendations
+ */
+export function generatePerformanceBudgetRecommendations(
+  issues: PerformanceBudgetIssue[]
+): string[] {
+  const recommendations: string[] = [];
+
+  if (issues.some(i => i.type === 'error')) {
+    recommendations.push('Reduce bundle sizes below budget limits');
+  }
+
+  recommendations.push('Consider code splitting and lazy loading');
+  recommendations.push('Compress and minify assets');
+
+  return recommendations;
+}
+```
+
+#### 2. Create Server Action
+
+Create `app/actions/validate/performance-budget.ts`:
+
+```typescript
+'use server';
+
+import { HealthCheckResult } from '@/types/crawl';
+import {
+  analyzePerformanceBudget,
+  calculatePerformanceBudgetScore,
+  generatePerformanceBudgetRecommendations
+} from '@/lib/validators/performance-budget';
+
+export async function validatePerformanceBudget(
+  url: string,
+  html?: string
+): Promise<HealthCheckResult> {
+  try {
+    if (!html) {
+      throw new Error('HTML content is required');
+    }
+
+    // Run analysis
+    const issues = await analyzePerformanceBudget(html, url);
+    const score = calculatePerformanceBudgetScore(issues);
+    const recommendations = generatePerformanceBudgetRecommendations(issues);
+
+    // Determine status
+    const status = score >= 80 ? 'success' : score >= 60 ? 'warning' : 'error';
+
+    return {
+      id: `performance-budget-${Date.now()}`,
+      label: 'Performance Budget',
+      status,
+      score,
+      message: `Performance score: ${score}/100`,
+      details: issues,
+      recommendations,
+      timestamp: Date.now(),
+      dataSource: 'Local Analysis'
+    };
+
+  } catch (error) {
+    console.error('[validatePerformanceBudget] Error:', error);
+
+    return {
+      id: `performance-budget-${Date.now()}`,
+      label: 'Performance Budget',
+      status: 'error',
+      message: 'Performance budget check failed',
+      details: [{
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      }],
+      timestamp: Date.now()
+    };
+  }
+}
+```
+
+#### 3. Update Configuration
 
 Edit `config/health-checks.json`:
 
 ```json
 {
   "healthChecks": [
-    // ... existing checks
     {
       "id": "performance-budget",
       "label": "Performance Budget",
-      "description": "Check resource sizes",
+      "description": "Check resource sizes against budgets",
       "icon": "Gauge",
       "color": "text-primary",
-      "enabled": true,
-      "apiEndpoint": "/api/validate/performance-budget"
+      "enabled": true
     }
   ]
 }
 ```
 
-#### 2. Create API Route
+**Note**: No `apiEndpoint` field needed - that's for the old API routes architecture.
 
-Create `app/api/validate/performance-budget/route.ts`:
+#### 4. Update Hook
+
+Edit `hooks/use-health-check.ts` to add your validator:
 
 ```typescript
-import { NextRequest, NextResponse } from "next/server";
-
-export async function POST(request: NextRequest) {
-  try {
-    const { url } = await request.json();
-    
-    // Validate URL
-    if (!url || typeof url !== 'string') {
-      return NextResponse.json(
-        { error: 'Invalid URL' },
-        { status: 400 }
+const runHealthCheck = async (checkType: string, crawlData: CrawlData) => {
+  switch (checkType) {
+    // ... existing cases
+    case 'performance-budget': {
+      const { validatePerformanceBudget } = await import(
+        '@/app/actions/validate/performance-budget'
       );
+      return await validatePerformanceBudget(url, crawlData.html);
     }
-
-    // Crawl website
-    const crawlResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/crawl`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url })
-      }
-    );
-
-    const crawlData = await crawlResponse.json();
-    
-    if (!crawlData.success) {
-      throw new Error('Failed to crawl website');
-    }
-
-    // Perform your analysis
-    const issues = [];
-    const html = crawlData.data.html;
-    
-    // Your validation logic here
-    // ...
-
-    // Calculate score
-    const score = calculateScore(issues);
-
-    // Generate response
-    return NextResponse.json({
-      id: `performance-budget-${Date.now()}`,
-      label: 'Performance Budget',
-      status: score >= 80 ? 'success' : score >= 60 ? 'warning' : 'error',
-      score,
-      message: generateMessage(score),
-      details: issues,
-      timestamp: Date.now(),
-      dataSource: 'Local Analysis'
-    });
-
-  } catch (error) {
-    console.error('Performance budget check error:', error);
-    return NextResponse.json(
-      { 
-        error: 'Performance budget check failed',
-        details: error.message 
-      },
-      { status: 500 }
-    );
+    default:
+      throw new Error(`Unknown check type: ${checkType}`);
   }
-}
-
-function calculateScore(issues: any[]): number {
-  // Your scoring logic
-  return 85;
-}
-
-function generateMessage(score: number): string {
-  if (score >= 80) return 'Excellent performance budget';
-  if (score >= 60) return 'Good, but could be improved';
-  return 'Performance budget exceeded';
-}
+};
 ```
 
-#### 3. Test Your Check
+#### 5. Write Tests
+
+Create `lib/validators/__tests__/performance-budget.test.ts`:
+
+```typescript
+import { describe, it, expect } from '@jest/globals';
+import {
+  analyzePerformanceBudget,
+  calculatePerformanceBudgetScore
+} from '../performance-budget';
+
+describe('Performance Budget Validator', () => {
+  it('should detect oversized scripts', async () => {
+    const html = '<html><script src="large.js"></script></html>';
+    const issues = await analyzePerformanceBudget(html, 'https://example.com');
+
+    expect(issues.length).toBeGreaterThan(0);
+  });
+
+  it('should calculate score correctly', () => {
+    const issues = [
+      { type: 'error' as const, message: 'Test' },
+      { type: 'warning' as const, message: 'Test' }
+    ];
+
+    const score = calculatePerformanceBudgetScore(issues);
+    expect(score).toBe(80); // 100 - (1*15) - (1*5)
+  });
+});
+```
+
+#### 6. Test Your Check
 
 ```bash
 # Start dev server
 npm run dev
 
-# Test via UI or curl
-curl -X POST http://localhost:3000/api/validate/performance-budget \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://example.com"}'
+# Open http://localhost:3000
+# Enter a URL and click your new check button
 ```
+
+**Benefits of This Pattern:**
+- ✅ No HTTP overhead
+- ✅ End-to-end type safety
+- ✅ Easier debugging
+- ✅ Smaller client bundle
+- ✅ Direct function calls
 
 ### Adding a New Component
 
